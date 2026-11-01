@@ -12,22 +12,27 @@
   // ---------- Estados (paleta cálida tipo Jarvis) ----------
   function S(n, amp, rad, spd, br, wave, c) { return { n: n, amp: amp, rad: rad, spd: spd, br: br, wave: wave, c: c }; }
   var E = {
-    reposo:     S("Reposo",     .6,  1,    .8,  .8,  .15, [1,.42,.06, 1,.72,.22, .85,.2,.02]),
-    escucha:    S("Escucha",    .8,  1.06, .9,  1,   .1,  [1,.55,.1, 1,.85,.35, .95,.35,.05]),
-    procesando: S("Procesando", 1.2, .92,  2.2, 1,   .5,  [1,.35,.05, 1,.9,.5, 1,.6,.1]),
-    respuesta:  S("Respuesta",  .85, 1,    1.2, 1,   1,   [1,.5,.08, 1,.85,.4, .95,.3,.05]),
-    feliz:      S("Feliz",      1,   1.04, 1.4, 1,   .7,  [1,.6,.1, 1,.92,.45, 1,.45,.05]),
-    preocupado: S("Preocupado", .8,  .95,  .7,  .85, .2,  [.85,.3,.1, 1,.55,.3, .6,.12,.12]),
-    error:      S("Error",      1.3, .98,  .5,  .95, 0,   [.95,.1,.2, 1,.4,.35, .6,.05,.25])
+    reposo:     S("Reposo",     .6,  1,    .8,  .8,  .15, [.42,.27,.9, .66,.47,1, .86,.78,1]),
+    escucha:    S("Escucha",    .8,  1.06, .9,  1,   .1,  [.4,.35,.95, .62,.58,1, .85,.88,1]),
+    procesando: S("Procesando", 1.2, .92,  2.2, 1,   .5,  [.5,.22,1, .74,.42,1, .93,.78,1]),
+    respuesta:  S("Respuesta",  .85, 1,    1.2, 1,   1,   [.42,.3,.95, .72,.55,1, .96,.9,1]),
+    feliz:      S("Feliz",      1,   1.04, 1.4, 1,   .7,  [.55,.3,1, .82,.52,1, 1,.88,1]),
+    preocupado: S("Preocupado", .8,  .95,  .7,  .85, .2,  [.4,.25,.8, .58,.4,.88, .78,.7,1]),
+    error:      S("Error",      1.3, .98,  .5,  .95, 0,   [.95,.1,.3, 1,.4,.5, .7,.1,.4])
   };
   var K = ["amp", "rad", "spd", "br", "wave"];
   var actual = "reposo", v = { c: E.reposo.c.slice() }, tinte = null, emo = null;
   K.forEach(function (k) { v[k] = E.reposo[k]; });
   var etiqueta = $("estado");
-  function fijar(c) { if (!E[c]) return false; actual = c; etiqueta.textContent = E[c].n; return true; }
+  var ESTL = { reposo: ["s-idle", "SISTEMA EN ESPERA"], escucha: ["s-listen", "ESCUCHANDO"], procesando: ["s-think", "PROCESANDO"], respuesta: ["s-speak", "RESPONDIENDO"], feliz: ["s-speak", "RESPONDIENDO"], preocupado: ["s-think", "ATENTO"], error: ["s-error", "ERROR"] }, ESTC = ["s-idle", "s-listen", "s-think", "s-speak", "s-error"];
+  function fijar(c) {
+    if (!E[c]) return false; actual = c; etiqueta.textContent = E[c].n;
+    try { var u = ESTL[c] || ESTL.reposo, b = document.body, h = document.getElementById("status-label"); ESTC.forEach(function (k) { b.classList.toggle(k, k === u[0]); }); if (h) h.textContent = (typeof live !== "undefined" && live) ? "MODO EN VIVO" : u[1]; } catch (er) {}
+    return true;
+  }
 
   // ---------- Diagnóstico (medidas) ----------
-  var M = { txt: [], aud: [], ttsMs: [], ttsOk: 0, ttsFail: 0, t0: 0, gotTxt: false, gotAud: false, live: { estado: "apagado", setupMs: 0, audioMs: [], cierres: 0, ultimo: "", modo: 0 } }, DL = [];
+  var M = { txt: [], aud: [], ttsMs: [], ttsOk: 0, ttsFail: 0, t0: 0, gotTxt: false, gotAud: false, live: { estado: "apagado", mic: "", setupMs: 0, audioMs: [], cierres: 0, ultimo: "", modo: 0 } }, DL = [];
   function dlog(s) { DL.push(new Date().toLocaleTimeString("es-CO") + " " + String(s).slice(0, 240)); if (DL.length > 14) DL.shift(); }
   window.addEventListener("error", function (e) { dlog("Error JS: " + (e.message || "") + (e.lineno ? " (línea " + e.lineno + ")" : "")); });
   window.addEventListener("unhandledrejection", function (e) { dlog("Promesa rechazada: " + ((e.reason && e.reason.message) || e.reason)); });
@@ -136,7 +141,7 @@
   var gl = cv.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "high-performance" });
   function compilar(tipo, s) { var h = gl.createShader(tipo); gl.shaderSource(h, s); gl.compileShader(h); if (!gl.getShaderParameter(h, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(h)); return null; } return h; }
   function subir() {
-    var d = new Float32Array(MAX * 8);
+    formaN++; var d = new Float32Array(MAX * 8);
     for (var i = 0; i < MAX; i++) { d[i * 8] = rnd[i * 2]; d[i * 8 + 1] = rnd[i * 2 + 1]; d.set(src.subarray(i * 3, i * 3 + 3), i * 8 + 2); d.set(tgt.subarray(i * 3, i * 3 + 3), i * 8 + 5); }
     gl.bindBuffer(gl.ARRAY_BUFFER, buf); cpu = d; gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
   }
@@ -392,12 +397,234 @@
     return { ok: true, hecho: "La figura «" + (a.nombre || "personalizada") + "» ya está en movimiento." };
   }
 
+  // ---------- Holograma neuronal (Canvas 2D): red de partículas, neuronas y sinapsis ----------
+  // Lee las mismas formas, colores, movimientos y estados que el holograma 3D, y los dibuja como la red morada original.
+  var cn = $("neuro"), g2 = cn ? cn.getContext("2d") : null, estiloN = !!g2 && ls("nexo_estilo") !== "3d", formaN = 0, nVis = null;
+  var NMAX = 3200, NNMAX = 900, nFN = 700, nstep = 0, nBase = 0, nlisto = false;
+  var nX = new Float32Array(NMAX), nY = new Float32Array(NMAX), nVX = new Float32Array(NMAX), nVY = new Float32Array(NMAX), nHX = new Float32Array(NMAX), nHY = new Float32Array(NMAX), nZ = new Float32Array(NMAX);
+  var nSZ = new Float32Array(NMAX), nMS = new Float32Array(NMAX), nPH = new Float32Array(NMAX), nFQ = new Float32Array(NMAX), nAct = new Float32Array(NNMAX), nA = new Uint16Array(NMAX), nB = new Uint16Array(NMAX), nFX = new Float32Array(nFN), nFY = new Float32Array(nFN);
+  var nN = 0, nNN = 0, nW = 200, nH = 400, nd = 1, nrgb = "168,121,255", nlt = "228,215,255", nt = 0, nrip = [], nev = [], npu = [], nLA = [], nLB = [], nLL = [], nADJ = [];
+  var nburst = 0, nmx = 1e9, nmy = 1e9, nfa = 0, nfaceT = 0, nfaceUntil = 0, nfaceNext = 14, nforma = -1, ncx = 0, ncy = 0, nR = 100, nRX = 0, nRY = 0, nLvl = 0, nnext = 0, nmicBeat = 0, nUlt = "", nSpec = new Float32Array(48), nFz = new Uint8Array(128);
+  var NT = { idle: [70, 0, .02, 1, 0, 1.5], listen: [90, 0, .05, 2.5, 60, 4], think: [140, 90, .03, 5, 0, 14], speak: [110, 20, .09, 5, 40, 7] }, NC = [70, 0, .02, 1, 0, 1.5];
+  var NREF = 170, nScr = 1, cnH = null, gH = null, nLinks = ls("nexo_links") === "1";
+  function nDisc(P, cx, cy, r, n) { for (var i = 0; i < n; i++) { var a = R() * 6.2832, d = Math.sqrt(R()) * r; P.push([cx + Math.cos(a) * d, cy + Math.sin(a) * d]); } }
+  function nRing(P, cx, cy, r, n, ry) { for (var i = 0; i < n; i++) { var a = i / n * 6.2832; P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * (ry || r)]); } }
+  function nArc(P, cx, cy, r, a0, a1, n) { for (var i = 0; i < n; i++) { var a = (a0 + (a1 - a0) * i / (n - 1)) * Math.PI / 180; P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } }
+  function nLine(P, x0, y0, x1, y1, n) { for (var i = 0; i < n; i++) { var u = i / (n - 1); P.push([x0 + (x1 - x0) * u, y0 + (y1 - y0) * u]); } }
+  function nHeart(P, cx, cy, s, n) { for (var i = 0; i < n; i++) { var q = i / n * 6.2832; P.push([cx + 16 * Math.pow(Math.sin(q), 3) / 17 * s, cy + (-(13 * Math.cos(q) - 5 * Math.cos(2 * q) - 2 * Math.cos(3 * q) - Math.cos(4 * q)) / 17 - .155) * s]); } }
+  function nCara(e) {
+    var P = [], L = -.30, Rr = .30, y = -.16;
+    switch (e) {
+      case "alegre": nArc(P, L, y + .05, .12, 200, 340, 70); nArc(P, Rr, y + .05, .12, 200, 340, 70); nArc(P, 0, .10, .38, 22, 158, 140); break;
+      case "triste": nDisc(P, L, y, .07, 50); nDisc(P, Rr, y, .07, 50); nLine(P, -.46, -.27, -.18, -.38, 45); nLine(P, .46, -.27, .18, -.38, 45); nArc(P, 0, .66, .34, 208, 332, 90); break;
+      case "enojado": nDisc(P, L, y + .02, .065, 45); nDisc(P, Rr, y + .02, .065, 45); nLine(P, -.48, -.42, -.12, -.26, 55); nLine(P, .48, -.42, .12, -.26, 55); nArc(P, 0, .80, .48, 248, 292, 80); break;
+      case "sorprendido": nRing(P, L, y, .13, 70); nRing(P, Rr, y, .13, 70); nDisc(P, L, y, .04, 15); nDisc(P, Rr, y, .04, 15); nRing(P, 0, .38, .11, 80, .15); break;
+      case "pensativo": nDisc(P, L + .05, y, .07, 50); nDisc(P, Rr + .05, y, .07, 50); nLine(P, -.46, -.38, -.14, -.44, 45); nLine(P, .14, -.31, .46, -.31, 45); nLine(P, -.2, .38, .22, .31, 70); break;
+      case "curioso": nRing(P, L, y, .09, 55); nRing(P, Rr, y, .13, 70); nDisc(P, L, y, .03, 10); nDisc(P, Rr, y, .04, 12); nArc(P, Rr, -.46, .15, 220, 320, 35); nArc(P, .06, .28, .17, 35, 145, 70); break;
+      case "amor": nHeart(P, L, y, .17, 75); nHeart(P, Rr, y, .17, 75); nArc(P, 0, .12, .36, 25, 155, 120); break;
+      default: nDisc(P, L, y, .07, 50); nDisc(P, Rr, y, .07, 50); nLine(P, -.22, .32, .22, .32, 80);
+    }
+    return P;
+  }
+  function neuroCara(e, seg) {
+    var P = nCara(e), k = P.length, r0 = NREF * .85;
+    for (var i = 0; i < nFN; i++) { var p = P[i % k], j = i >= k ? .024 : 0; nFX[i] = (p[0] + (R() - .5) * j) * r0; nFY[i] = (p[1] + (R() - .5) * j) * r0; }
+    nfaceT = 1; nfaceUntil = nt + (seg || 4.5);
+  }
+  function neuroTam() {
+    var q = Q(); nd = Math.min(window.devicePixelRatio || 1, q.dpr, 1.5);
+    nW = cn.clientWidth || window.innerWidth; nH = cn.clientHeight || window.innerHeight;
+    cn.width = Math.round(nW * nd); cn.height = Math.round(nH * nd); g2.setTransform(nd, 0, 0, nd, 0, 0);
+    nBase = Math.max(1100, Math.min(NMAX, Math.round(q.n / 3.6)));
+    nNN = Math.min(NNMAX, Math.round(nBase * .27)); nN = Math.min(NMAX, Math.max(nBase, nNN + nFN + 100));
+    var sc = Math.pow(Math.max(1, nW / 480), .7);
+    for (var i = 0; i < nN; i++) {
+      nSZ[i] = (R() < .15 ? 2.2 : R() < .5 ? 1.5 : 1) * sc; nMS[i] = .6 + R(); nPH[i] = R() * 6.283; nFQ[i] = 1.5 + R() * 4;
+      if (!nlisto) { nX[i] = (R() - .5) * 30; nY[i] = (R() - .5) * 30; nVX[i] = nVY[i] = 0; }
+    }
+    nlisto = true; nforma = -1; nAct.fill(0); nev = []; npu = []; nLA = []; nLB = []; nLL = []; nADJ = [];
+  }
+  // sinapsis: cada neurona se conecta con sus 2 vecinas más cercanas y 1 un poco más lejana
+  function neuroSinapsis() {
+    nLA = []; nLB = []; nLL = []; nADJ = []; for (var z = 0; z < nNN; z++) nADJ.push([]); nev = []; npu = []; nAct.fill(0);
+    var seen = {}, i, j, k, d, dx, dy, q, l, key;
+    for (i = 0; i < nNN; i++) {
+      d = [];
+      for (j = 0; j < nNN; j++) if (j !== i) {
+        dx = nHX[i] - nHX[j]; dy = nHY[i] - nHY[j]; q = dx * dx + dy * dy;
+        if (d.length < 7 || q < d[6][0]) { k = Math.min(d.length, 6); if (d.length < 7) d.push(null); while (k > 0 && d[k - 1][0] > q) { d[k] = d[k - 1]; k--; } d[k] = [q, j]; }
+      }
+      var pick3 = [0, 1, 2 + ((R() * 5) | 0)];
+      for (var u = 0; u < 3; u++) {
+        var e = d[pick3[u]]; if (!e) continue; j = e[1]; key = i < j ? i * 4096 + j : j * 4096 + i;
+        if (!seen[key]) { seen[key] = 1; l = nLA.length; nLA.push(i); nLB.push(j); nLL.push(Math.sqrt(e[0])); nADJ[i].push(l); nADJ[j].push(l); }
+      }
+    }
+  }
+  function neuroDisparo(i, e) {
+    nAct[i] = 1; if (e < .25 || !nLinks || !nADJ[i]) return;
+    for (var k = 0; k < nADJ[i].length; k++) {
+      var l = nADJ[i][k], j = nLA[l] === i ? nLB[l] : nLA[l];
+      if (nAct[j] < .3 && R() < .6 && nev.length < 900) { var dl = .12 + R() * .1; nev.push([nt + dl, j, e * .82]); npu.push([i, j, nt, dl]); }
+    }
+  }
+  // posiciones de reposo de cada partícula = forma actual (con movimiento, giro y ondas), vista de frente
+  function neuroHomes() {
+    var i, o, m, x, y, z, dx, dy, dz, sw, cs, sn, lw, fl, s0, px, py, pz, pe, ra, tt, mm = morph, ya = mc.w !== 0 || mc.b !== 0 || mc.f !== 0 || mc.v !== 0;
+    var cz = Math.cos(mc.rz), sz = Math.sin(mc.rz), cy = Math.cos(nRX), sy = Math.sin(nRX), cx = Math.cos(nRY), sx = Math.sin(nRY), pul = 1 + pulso * .1;
+    var kx = mc.tx * nPX / nScr, ky = mc.ty * nPX / nScr, ru = NREF, cr = crisp, rr = rough, wa = .25 + .3 * v.amp;
+    for (i = 0; i < nN; i++) {
+      o = i * 8; ra = cpu[o];
+      m = mm * 1.5 - ra * .5; m = m < 0 ? 0 : m > 1 ? 1 : m; m = m * m * (3 - 2 * m);
+      x = cpu[o + 2] + (cpu[o + 5] - cpu[o + 2]) * m; y = cpu[o + 3] + (cpu[o + 6] - cpu[o + 3]) * m; z = cpu[o + 4] + (cpu[o + 7] - cpu[o + 4]) * m;
+      sw = nt * wa * (1.3 - Math.sqrt(x * x + z * z)) * swirl; cs = Math.cos(sw); sn = Math.sin(sw);
+      dx = cs * x - sn * z; dz = sn * x + cs * z; dy = y;
+      if (ya) {
+        tt = (dy - .05) / -.6; tt = tt < 0 ? 0 : tt > 1 ? 1 : tt; lw = tt * tt * (3 - 2 * tt);
+        dx += mc.w * lw * Math.sin(mc.ph + dx * 4) * .2; dy += mc.w * lw * Math.max(0, Math.cos(mc.ph + dx * 4)) * .06 + mc.b * Math.abs(Math.sin(mc.ph)) * .1;
+        var a1 = (Math.abs(dx) - .1) / .6, a2 = (dy - .1) / .5; a1 = a1 < 0 ? 0 : a1 > 1 ? 1 : a1; a2 = a2 < 0 ? 0 : a2 > 1 ? 1 : a2;
+        fl = Math.max(a1 * a1 * (3 - 2 * a1), a2 * a2 * (3 - 2 * a2) * .7); dy += mc.f * Math.sin(mc.ph) * .22 * fl + mc.v * Math.sin(mc.ph + dx * 5) * .1 * (.4 + .6 * Math.abs(dx));
+      }
+      s0 = .82 + rr * .5 * ra * ra * ra + (1 - rr) * .1 * ra; s0 += (.95 - s0) * cr; s0 *= v.rad * pul;
+      px = dx * s0 * mc.sx; py = dy * s0 * mc.sy; pz = dz * s0;
+      var qx = px * cz - py * sz; py = px * sz + py * cz; px = qx;
+      var rx2 = px * cy + pz * sy; pz = -px * sy + pz * cy; px = rx2;
+      var ry2 = py * cx - pz * sx; pz = py * sx + pz * cx; py = ry2;
+      pe = 1.7 / (2.4 - pz);
+      nHX[i] = px * pe * ru + kx; nHY[i] = -py * pe * ru - ky; nZ[i] = pz;
+    }
+  }
+  function neuroPaso(dt, now) {
+    var i, j, k, l, a, b, x, y, r, nx, ny, st, q = Q(), G = g2, WW = nW, HH = nH, S = 0, mxl = nmx, myl = nmy;
+    if (!nlisto) neuroTam();
+    if (holo) {
+      S = Math.max(64, Math.round(Math.min(nW, nH) * tam)); if (!cnH) { cnH = document.createElement("canvas"); gH = cnH.getContext("2d"); }
+      var sPx = Math.round(S * nd); if (cnH.width !== sPx) { cnH.width = cnH.height = sPx; gH.setTransform(nd, 0, 0, nd, 0, 0); }
+      G = gH; WW = HH = S; mxl = myl = 1e9;
+    }
+    nstep++;
+    if (nstep % 45 === 0 && Math.max(1100, Math.min(NMAX, Math.round(q.n / 3.6))) !== nBase) neuroTam();
+    if (nstep % 12 === 1) {
+      nrgb = Math.round(v.c[3] * 255) + "," + Math.round(v.c[4] * 255) + "," + Math.round(v.c[5] * 255);
+      nlt = Math.round(v.c[3] * 255 + (255 - v.c[3] * 255) * .7) + "," + Math.round(v.c[4] * 255 + (255 - v.c[4] * 255) * .7) + "," + Math.round(v.c[5] * 255 + (255 - v.c[5] * 255) * .7);
+      raiz.style.setProperty("--hcy", ncy + "px"); raiz.style.setProperty("--hr", nR + "px");
+    }
+    if (holo) { nR = S / 2 * escU * .66; ncx = ncy = S / 2; } else { var asp2 = nW / nH; nR = Math.min(.55, asp2 * .9) * escU * (1 - .3 * limpioV) * nH / 2; ncx = nW / 2; ncy = nH / 2 * (1 - (.44 - .2 * limpioV)); }
+    nScr = Math.max(.05, nR / NREF); nPX = HH / 2;
+    var dtp = Math.min(dt, .033), f16 = dtp / .016; nt += dtp;
+    neuroHomes();
+    if (nforma !== formaN && morph >= .88) { nforma = formaN; if (nLinks) neuroSinapsis(); else { nLA = []; nLB = []; nLL = []; nADJ = []; npu = []; } }
+    // estado -> parámetros
+    st = (hablando || pendNav > 0 || actual === "respuesta" || actual === "feliz") ? "speak" : (actual === "procesando" || (ocupado && !hablando)) ? "think" : (grabando || actual === "escucha") ? "listen" : "idle";
+    var tg = NT[st]; for (k = 0; k < 6; k++) NC[k] += (tg[k] - NC[k]) * (1 - Math.pow(.94, f16));
+    // micrófono / voz: espectro
+    var an = (hablando && anS) ? anS : ((grabando || live) && anM) ? anM : null;
+    if (an) { try { an.getByteFrequencyData(nFz); } catch (er) {} for (k = 0; k < 48; k++) { var sv = nFz[1 + k] / 255; nSpec[k] += (sv - nSpec[k]) * (sv > nSpec[k] ? .7 : .2); } }
+    else for (k = 0; k < 48; k++) nSpec[k] *= .85;
+    nLvl += (Math.min(1, (an ? nvlN * 2.2 : 0)) - nLvl) * .3;
+    var fl = NC[0], sw = NC[1], bs = 1 + NC[2] * Math.sin(nt * NC[3]) + nLvl * .3, wv = NC[4], mr = NREF * .35, R0 = NREF * .8, br = .9, lk = nLinks ? .75 : 0;
+    // fondo: estela
+    G.globalCompositeOperation = "destination-out"; G.fillStyle = "rgba(0,0,0," + Math.min(.6, Math.max(.12, 1 - Math.pow(.76, f16))).toFixed(2) + ")"; G.fillRect(0, 0, WW, HH);
+    G.globalCompositeOperation = "source-over";
+    if (nt > nnext) { nnext = nt + (st === "speak" ? .5 : st === "listen" ? .9 : st === "think" ? 1.6 : 3.2); nrip.push([0, 0, nt, st === "idle" ? .8 : 1.1]); }
+    if (nLvl > .22 && nt > nmicBeat) { nmicBeat = nt + .22; nrip.push([0, 0, nt, .7 + nLvl * 1.8]); }
+    for (k = nrip.length - 1; k >= 0; k--) if (nt - nrip[k][2] > 2) nrip.splice(k, 1);
+    if (nNN && R() < NC[5] * dtp * nNN / 900 * (1 + nLvl * 14)) neuroDisparo((R() * nNN) | 0, 1);
+    for (k = nev.length - 1; k >= 0; k--) if (nev[k][0] <= nt) { var ev = nev[k]; nev.splice(k, 1); neuroDisparo(ev[1], ev[2]); }
+    for (i = 0; i < nNN; i++) nAct[i] *= .92;
+    // caras: según el ánimo o de vez en cuando
+    var caraOK = crisp < .3 && !rig && !relojOn && !holo && morph >= .9;
+    if (actual !== nUlt) { nUlt = actual; if (caraOK) { if (actual === "feliz") neuroCara("alegre", 3.5); else if (actual === "preocupado") neuroCara("pensativo", 4); else if (actual === "error") neuroCara("triste", 4); } }
+    if (caraOK && nt > nfaceNext) { nfaceNext = nt + 25 + R() * 35; if (!ocupado && !hablando && !grabando) neuroCara(["neutral", "curioso", "pensativo", "alegre"][(R() * 4) | 0], 4.5); }
+    if (!caraOK) nfaceT = 0; else if (nfaceT && nt > nfaceUntil) nfaceT = 0;
+    nfa += (nfaceT - nfa) * (1 - Math.pow(.93, f16));
+    var RS = R0 * .7, RW = R0 * .24, nrp = nrip.length, na = 0, nb = 0, dmp = Math.pow(.95, f16), zA = crisp < .5;
+    for (i = 0; i < nN; i++) {
+      x = nX[i]; y = nY[i]; r = Math.sqrt(x * x + y * y) + .001; nx = x / r; ny = y / r;
+      var hx = nHX[i], hy = nHY[i], fE = 0, ax, ay;
+      if (nfa > .01 && i >= nNN && i < nNN + nFN) { var kf = i - nNN; hx += (nFX[kf] - hx) * nfa; hy += (nFY[kf] - hy) * nfa; fE = nfa; }
+      ax = (hx * bs - x) * (5 + 14 * fE) + fl * (1 - .85 * fE) * (Math.sin(y * .021 + nt * .8) + Math.cos((x + y) * .009 - nt * .5));
+      ay = (hy * bs - y) * (5 + 14 * fE) + fl * (1 - .85 * fE) * (Math.cos(x * .019 - nt * .7) + Math.sin((x - y) * .011 + nt * .4));
+      if (sw) { ax -= ny * sw; ay += nx * sw; }
+      if (wv) { var w1 = Math.sin(r * .05 - nt * 7) * wv; ax += nx * w1; ay += ny * w1; }
+      if (an) { var sp = nSpec[Math.min(47, (Math.abs(Math.atan2(x, y)) / Math.PI * 47) | 0)]; if (sp > .02) { var qq = sp * sp * (.35 + .65 * Math.min(1, r / R0)) * 1600; ax += nx * qq; ay += ny * qq; } }
+      var dx = x - mxl, dy = y - myl, d2 = dx * dx + dy * dy;
+      if (d2 < mr * mr) { var dd = Math.sqrt(d2) + 1, kk = 1 - dd / mr, q2 = kk * kk * 1400 / nMS[i]; ax += dx / dd * q2; ay += dy / dd * q2; }
+      if (nburst) { ax += nx * nburst * 2500; ay += ny * nburst * 2500; }
+      var hot = 0;
+      for (k = 0; k < nrp; k++) {
+        var p = nrip[k], rx = x - p[0], ry = y - p[1], d = Math.sqrt(rx * rx + ry * ry) + .001, dr = d - (nt - p[2]) * RS;
+        if (dr < RW && dr > -RW) { var u = dr / RW, w2 = -Math.sin(u * 3.1416) * (1 - Math.abs(u)) * p[3] * (1 - (nt - p[2]) / 2) * 900 / nMS[i]; ax += rx / d * w2; ay += ry / d * w2; if (Math.abs(u) < .28) hot = 1; }
+      }
+      if (i < nNN) { if (hot && nAct[i] < .2 && R() < .012) neuroDisparo(i, .8); }
+      else if (fE < .3 && R() < .0008 * f16) { var aa = R() * 6.283, ss = 140 + R() * 220; nVX[i] += Math.cos(aa) * ss; nVY[i] += Math.sin(aa) * ss; hot = 1; }
+      var vx = (nVX[i] + ax * dtp) * dmp, vy = (nVY[i] + ay * dtp) * dmp;
+      nVX[i] = vx; nVY[i] = vy; nX[i] = x + vx * dtp; nY[i] = y + vy * dtp;
+      if (i >= nNN) { if (fE > .3 || hot || vx * vx + vy * vy > 1600 || Math.sin(nt * nFQ[i] + nPH[i]) > .93) nB[nb++] = i; else nA[na++] = i; }
+    }
+    nburst *= Math.pow(.92, f16); if (nburst < .01) nburst = 0;
+    var sk = Math.min(3.5, Math.max(1, .8 / nScr)), sz, zq;
+    G.save(); G.translate(ncx, ncy); G.scale(nScr, nScr);
+    G.fillStyle = "rgba(" + nrgb + "," + (.38 * br * (1 + nLvl * .8)).toFixed(2) + ")";
+    for (j = 0; j < na; j++) { i = nA[j]; sz = nSZ[i] * sk; if (zA) { zq = .75 + .35 * (nZ[i] + 1); sz *= zq < .5 ? .5 : zq; } G.fillRect(nX[i], nY[i], sz, sz); }
+    G.fillStyle = "rgba(" + nlt + "," + (.7 * br).toFixed(2) + ")";
+    for (j = 0; j < nb; j++) { i = nB[j]; G.fillRect(nX[i], nY[i], nSZ[i] * sk, nSZ[i] * sk); }
+    // sinapsis
+    G.lineWidth = .7 * sk; G.strokeStyle = "rgba(" + nrgb + "," + (.09 * br * lk).toFixed(3) + ")"; G.beginPath();
+    var act = [], ll = nLA.length;
+    for (l = 0; l < ll; l++) {
+      a = nLA[l]; b = nLB[l]; var ax2 = nX[a], ay2 = nY[a], bx2 = nX[b], by2 = nY[b], ddx = ax2 - bx2, ddy = ay2 - by2;
+      if (Math.sqrt(ddx * ddx + ddy * ddy) > nLL[l] * 2.6) continue;
+      var s2 = Math.max(nAct[a], nAct[b]);
+      if (s2 > .06) act.push(ax2, ay2, bx2, by2, s2); else { G.moveTo(ax2, ay2); G.lineTo(bx2, by2); }
+    }
+    G.stroke(); G.lineWidth = 1.3 * sk;
+    for (k = 0; k < act.length; k += 5) { G.strokeStyle = "rgba(" + nlt + "," + Math.min(1, act[k + 4] * .6 * br).toFixed(2) + ")"; G.beginPath(); G.moveTo(act[k], act[k + 1]); G.lineTo(act[k + 2], act[k + 3]); G.stroke(); }
+    // impulsos que viajan por las conexiones
+    for (k = npu.length - 1; k >= 0; k--) {
+      var pp2 = npu[k], u2 = (nt - pp2[2]) / pp2[3]; if (u2 >= 1) { npu.splice(k, 1); continue; }
+      var px2 = nX[pp2[0]] + (nX[pp2[1]] - nX[pp2[0]]) * u2, py2 = nY[pp2[0]] + (nY[pp2[1]] - nY[pp2[0]]) * u2;
+      G.fillStyle = "rgba(" + nlt + ",.12)"; G.fillRect(px2 - 3 * sk, py2 - 3 * sk, 6 * sk, 6 * sk); G.fillStyle = "rgba(" + nlt + ",1)"; G.fillRect(px2 - 1.2 * sk, py2 - 1.2 * sk, 2.4 * sk, 2.4 * sk);
+    }
+    // neuronas
+    for (i = 0; i < nNN; i++) {
+      var ac2 = nAct[i], s3 = (nSZ[i] * 1.15 + ac2 * 1.6) * sk, x3 = nX[i], y3 = nY[i];
+      G.fillStyle = "rgba(" + nrgb + "," + ((.05 + ac2 * .2) * br).toFixed(2) + ")"; G.beginPath(); G.arc(x3, y3, s3 * 1.7, 0, 6.2832); G.fill();
+      G.fillStyle = ac2 > .15 ? "rgba(" + nlt + "," + (.5 + ac2 * .35).toFixed(2) + ")" : "rgba(" + nrgb + "," + Math.min(1, .75 * br).toFixed(2) + ")"; G.fillRect(x3 - s3 / 2, y3 - s3 / 2, s3, s3);
+    }
+      G.restore();
+    if (holo) {
+      g2.setTransform(nd, 0, 0, nd, 0, 0); g2.globalCompositeOperation = "source-over"; g2.clearRect(0, 0, nW, nH);
+      var of = S / 2 + Math.min(nW, nH) * dist, sg = inv ? -1 : 1;
+      for (k = 0; k < 4; k++) {
+        var w = VISTAS[k], fx = w[2] * sg, fy = w[3] * sg;
+        g2.save(); g2.translate(nW / 2 + w[0] * of, nH / 2 - w[1] * of);
+        if (w[4]) g2.transform(0, -fy, -fx, 0, 0, 0); else g2.transform(fx, 0, 0, fy, 0, 0);
+        g2.drawImage(cnH, -S / 2, -S / 2, S, S); g2.restore();
+      }
+    }
+  }
+  var nvlN = 0, nPX = 300;
+  function neuroToque(ev) {
+    if (!estiloN || nVis !== true) return;
+    var px = (ev.clientX - ncx) / nScr, py = (ev.clientY - ncy) / nScr; nburst = .3; nrip.push([px, py, nt, 1.2]);
+    var bi = 0, bd = 1e12; for (var i = 0; i < nNN; i++) { var dx = nX[i] - px, dy = nY[i] - py, q = dx * dx + dy * dy; if (q < bd) { bd = q; bi = i; } }
+    if (nNN) neuroDisparo(bi, 1.3);
+  }
+  window.addEventListener("pointerdown", neuroToque);
+  window.addEventListener("pointermove", function (e) { nmx = (e.clientX - ncx) / nScr; nmy = (e.clientY - ncy) / nScr; });
+  window.addEventListener("pointerup", function () { nmx = nmy = 1e9; }); window.addEventListener("pointercancel", function () { nmx = nmy = 1e9; });
+  document.addEventListener("pointerleave", function () { nmx = nmy = 1e9; });
+  var nResTm = 0; window.addEventListener("resize", function () { clearTimeout(nResTm); nResTm = setTimeout(function () { if (estiloN && cn) neuroTam(); }, 200); });
+  function ponerLinks(on) { nLinks = !!on; ls("nexo_links", nLinks ? "1" : "0"); nforma = -1; }
+  function ponerEstilo(neuronal) { estiloN = !!g2 && neuronal; ls("nexo_estilo", estiloN ? "n" : "3d"); if (estiloN) { nlisto = false; } return { ok: true, hecho: estiloN ? "Holograma neuronal activado." : "Holograma de partículas 3D activado." }; }
+
   // ---------- Bucle de dibujo ----------
   var ptr = [0, 0], pos = [9, 9], pS = [0, 0], pulso = 0;
   window.addEventListener("pointermove", function (e) { ptr[0] = e.clientX / innerWidth * 2 - 1; ptr[1] = e.clientY / innerHeight * 2 - 1; pos[0] = ptr[0] * asp; pos[1] = -ptr[1]; });
   window.addEventListener("pointerdown", function () { pulso = 1; });
   var reducido = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var holo = false, inv = false, inten = +ls("nexo_inten") || 2.4, tam = .3, dist = .04, cuenta = Q().n, velU = 1, escU = 1;
+  var holo = false, inv = false, inten = +ls("nexo_inten") || 2.4, tam = .36, dist = .04, cuenta = Q().n, velU = 1, escU = 1;
   var ult = 0, t = 0, ang = 0, acum = 0, cuadros = 0, pp = [9, 9], glitch = 0, sigG = 5, sigP = 2, fr = 0, raiz = document.documentElement;
   var VISTAS = [[0, 1, -1, 1, 0], [0, -1, 1, -1, 0], [1, 0, 1, 1, 1], [-1, 0, -1, -1, 1]];
   var ac = null, anS = null, anM = null, b1 = new Uint8Array(256), b2 = new Uint8Array(256), hablando = false, grabando = false, hablo = false, ultV = 0, t0 = 0, grab = null, fuente = null, pendNav = 0, streaming = false;
@@ -430,6 +657,8 @@
     limpioV += (limpioT - limpioV) * k; if (gm) gm.gain.value += (((escuchando || grabando || ocupado || hablando || pendNav > 0) ? .22 : 1) - gm.gain.value) * Math.min(1, dt * 5);
     crisp += (crispT - crisp) * k; swirl += (swirlT - swirl) * k; rotK += (rotT - rotK) * k;
     var wS = lim((rough - .3) / .7, 0, 1), rx = (ang * wS + Math.sin(ang * .8) * .75 * (1 - wS)) * rotK;
+    nRX = rx + pS[0] * .6 * (1 - .7 * crisp); nRY = pS[1] * .4 * (1 - .7 * crisp); nvlN = nvl;
+    var vn = estiloN; if (vn !== nVis) { nVis = vn; cv.style.visibility = vn ? "hidden" : "visible"; cn.style.visibility = vn ? "visible" : "hidden"; if (vn) nlisto = false; }
     gl.uniform1f(U.uLite, Q().lite); gl.uniform1f(U.uT, t); gl.uniform1f(U.uAmp, v.amp); gl.uniform1f(U.uRad, v.rad); gl.uniform1f(U.uWave, v.wave * f);
     gl.uniform1f(U.uPulse, pulso); gl.uniform1f(U.uDPR, dpr); gl.uniform1f(U.uBr, v.br * (1 + .04 * Math.sin(t * 40)));
     gl.uniform4f(U.uMA, mc.w, mc.b, mc.f, mc.v); gl.uniform3f(U.uMV, mc.tx, mc.ty, mc.rz); gl.uniform2f(U.uMS, mc.sx, mc.sy); gl.uniform1f(U.uPh, mc.ph); gl.uniform1f(U.uCrisp, crisp); gl.uniform1f(U.uSwirl, swirl); gl.uniform1f(U.uInt, (holo ? inten * 1.35 : inten) * (1 + .15 * crisp) * (.55 + .45 * Math.min(1, (Math.abs(mc.sx) + mc.sy) / 2))); gl.uniform1f(U.uGlitch, glitch); gl.uniform1f(U.uMorph, morph); gl.uniform1f(U.uRough, rough);
@@ -440,7 +669,7 @@
     if (!holo) {
       gl.uniform1f(U.uAsp, asp); gl.uniform1f(U.uScale, Math.min(.55, asp * .9) * escU * (1 - .3 * limpioV)); gl.uniform1f(U.uOff, .44 - .2 * limpioV); gl.uniform2f(U.uPtr, pp[0], pp[1]);
       gl.uniform2f(U.uFlip, 1, 1); gl.uniform1f(U.uSwap, 0); gl.uniform1f(U.uPS, tp);
-      gl.drawArrays(gl.POINTS, 0, cuenta);
+      if (!vn) gl.drawArrays(gl.POINTS, 0, cuenta);
     } else {
       var W = cv.width, H = cv.height, m = Math.min(W, H), q = Math.round(m * tam), off = q / 2 + m * dist, sg = inv ? -1 : 1;
       gl.enable(gl.SCISSOR_TEST);
@@ -449,9 +678,10 @@
         var x = Math.round(W / 2 + w[0] * off - q / 2), y = Math.round(H / 2 + w[1] * off - q / 2);
         gl.viewport(x, y, q, q); gl.scissor(x, y, q, q);
         gl.uniform2f(U.uFlip, w[2] * sg, w[3] * sg); gl.uniform1f(U.uSwap, w[4]);
-        gl.drawArrays(gl.POINTS, 0, cuenta);
+        if (!vn) gl.drawArrays(gl.POINTS, 0, cuenta);
       });
     }
+    if (vn) { try { neuroPaso(dt, now); } catch (er) { dlog("Neuro: " + er.message); estiloN = false; nVis = null; } }
     try { dibujarViz(dt, now); } catch (er) {}
   }
   requestAnimationFrame(dibujar);
@@ -503,8 +733,12 @@
     if (n === "abrir_app_movil") return abrirMovil(a.app, a.texto);
     if (n === "volumen_voz") { volV = lim((+a.nivel) / 100, 0, 1); ls("nexo_vol", String(volV)); if (gv) gv.gain.value = volV; return { ok: true, hecho: "Mi voz quedó al " + Math.round(volV * 100) + " por ciento." }; }
     if (n === "brillo_app") { var nb = lim(+a.nivel, 10, 100); ls("nexo_brillo", String(nb)); velo(nb); return { ok: true, hecho: "Brillo de la app al " + Math.round(nb) + " por ciento." }; }
+    if (n === "mostrar_imagen") return mostrarImagen(a);
+    if (n === "ocultar_imagen") { ocultarImg(); return { ok: true, hecho: "Imagen oculta." }; }
+    if (n === "estilo_holograma") return ponerEstilo(a.estilo !== "3d");
     if (n === "recordar") return recordar(a.dato);
     if (n === "olvidar") return olvidar(a.texto);
+    if (n === "buscar_recuerdos") return buscarRecuerdos(a.tema);
     if (n === "palabra_clave") return cambiarPalabra(a.palabra);
     if (n === "temporizador") return crearTm(a);
     if (n === "temporizadores") return gestionarTm(a);
@@ -564,7 +798,11 @@
     { name: "abrir_app_movil", description: "Abre una app o servicio en el celular: youtube, maps, spotify, whatsapp, telegram, instagram, tiktok, facebook, x, gmail, google, netflix, llamada, sms. texto = búsqueda, número de teléfono o mensaje.", parameters: P({ app: { type: "string" }, texto: { type: "string" } }, ["app"]) },
     { name: "volumen_voz", description: "Cambia el volumen de la voz de NEXO (0 a 100). No cambia el volumen del sistema.", parameters: P({ nivel: { type: "number" } }, ["nivel"]) },
     { name: "brillo_app", description: "Cambia el brillo de la pantalla de NEXO (10 a 100) oscureciendo la app. El brillo del sistema del celular no se puede cambiar desde una web.", parameters: P({ nivel: { type: "number" } }, ["nivel"]) },
+    { name: "mostrar_imagen", description: "Muestra una imagen REAL en el holograma (queda atenuado detrás) y también en el chat. consulta: SOLO el tema, corto y concreto (p. ej. «Torre Eiffel», «gato siamés», «Albert Einstein»). origen: wikipedia (fotos reales de personas, lugares, animales, objetos; por defecto), generar (la IA dibuja ideas o cosas imaginarias) o url (enlace https). segundos: cuánto dura (0 = hasta que el usuario la quite).", parameters: P({ consulta: { type: "string" }, origen: { type: "string", enum: ["wikipedia", "generar", "url"] }, segundos: { type: "number" } }, ["consulta"]) },
+    { name: "ocultar_imagen", description: "Quita la imagen que se está mostrando en el holograma.", parameters: P({}) },
+    { name: "estilo_holograma", description: "Cambia el estilo del holograma: neuronal (red morada de partículas y neuronas, por defecto) o 3d (nube de partículas en 3D).", parameters: P({ estilo: { type: "string", enum: ["neuronal", "3d"] } }, ["estilo"]) },
     { name: "recordar", description: "Guarda en tu memoria un dato duradero sobre el usuario (nombre, gustos, rutinas, lo que pida recordar).", parameters: P({ dato: { type: "string" } }, ["dato"]) },
+    { name: "buscar_recuerdos", description: "Busca en tu memoria a largo plazo datos del usuario relacionados con un tema (sin tema devuelve los más recientes). Úsala cuando necesites un dato personal que no ves en lo que recuerdas, o si te preguntan qué sabes de ellos.", parameters: P({ tema: { type: "string" } }) },
     { name: "olvidar", description: "Borra de tu memoria los datos que contengan ese texto.", parameters: P({ texto: { type: "string" } }, ["texto"]) },
     { name: "palabra_clave", description: "Cambia la palabra con la que el usuario te llama por voz (por defecto nexo).", parameters: P({ palabra: { type: "string" } }, ["palabra"]) }
   );
@@ -611,7 +849,15 @@
   TOOLS[0].functionDeclarations.push(
     { name: "pc_portapapeles_leer", description: "Lee el contenido del portapapeles de la PC.", parameters: P({}) },
     { name: "pc_portapapeles_escribir", description: "Escribe un texto en el portapapeles de la PC.", parameters: P({ texto: { type: "string" } }, ["texto"]) },
-    { name: "pc_screenshot", description: "Toma una captura de pantalla de la PC y la descarga en el celular.", parameters: P({}) },
+    { name: "pc_ver_pantalla", description: "Mira la pantalla de la PC ahora mismo y responde sobre lo que se ve (qué app está abierta, qué dice un texto, un error, etc.). Úsala cuando el usuario pregunte qué hay en su pantalla o pida ayuda con algo que está viendo.", parameters: P({ pregunta: { type: "string" } }) },
+    { name: "pc_screenshot", description: "Toma una captura de pantalla de la PC y la MUESTRA en el holograma y en el chat del celular (con un botón para guardarla).", parameters: P({}) },
+    { name: "pc_traer", description: "Trae un archivo de la PC al celular. accion=traer lo guarda en el celular y, si es imagen, canción o video, además lo muestra o lo reproduce en NEXO; accion=ver solo lo muestra o reproduce sin guardarlo. Usa antes pc_listar para conocer la ruta exacta.", parameters: P({ ruta: { type: "string" }, accion: { type: "string", enum: ["traer", "ver"] } }, ["ruta"]) },
+    { name: "pc_reproducir", description: "Abre un archivo (canción, video, imagen o documento) en la PC con su programa predeterminado, por ejemplo para que una canción suene en la PC. Para pausar o cambiar el volumen usa pc_media.", parameters: P({ ruta: { type: "string" } }, ["ruta"]) },
+    { name: "pc_ordenar", description: "Ordena una carpeta de la PC (escritorio, documentos, descargas…) con OpenCode. Primero propone un plan y espera la confirmación del usuario; nunca borra archivos.", parameters: P({ carpeta: { type: "string" }, criterio: { type: "string", description: "Cómo ordenar: por tipo de archivo, por fecha, por proyecto…" } }, ["carpeta"]) },
+    { name: "mostrar_video", description: "Muestra un mini video en el holograma, con su sonido, y silencia el micrófono mientras suena. origen=web busca en Pexels (consulta en lenguaje natural, por ejemplo «amanecer en la montaña»), origen=pc usa un archivo de la PC (consulta = ruta), origen=url un enlace https.", parameters: P({ consulta: { type: "string" }, origen: { type: "string", enum: ["web", "pc", "url"] }, segundos: { type: "number", description: "Duración en segundos; 0 = hasta que termine" }, sonido: { type: "boolean" }, bucle: { type: "boolean" } }, ["consulta"]) },
+    { name: "opencode_implementar", description: "Le pide a OpenCode que implemente una mejora en el código de NEXO (esta app), la suba a GitHub y NEXO se actualiza sola. Úsala SOLO cuando el usuario ya aprobó explícitamente una opción; en ese caso pon aprobado=true.", parameters: P({ tarea: { type: "string", description: "Qué implementar, bien descrito" }, aprobado: { type: "boolean" } }, ["tarea", "aprobado"]) },
+    { name: "opencode_revertir", description: "Le pide a OpenCode volver a la versión anterior de NEXO si un cambio salió mal. Solo con aprobación explícita del usuario (aprobado=true).", parameters: P({ aprobado: { type: "boolean" } }, ["aprobado"]) },
+    { name: "nexo_proyecto", description: "Guarda (o consulta si no envías ruta) la carpeta de la PC donde está el código de NEXO.", parameters: P({ ruta: { type: "string" } }) },
     { name: "pc_media", description: "Controla la reproduccion de medios en la PC: play, pause, siguiente, anterior, subir, bajar (volumen multimedia).", parameters: P({ accion: { type: "string", enum: ["play", "pause", "playpause", "siguiente", "anterior", "subir", "bajar"] } }, ["accion"]) },
     { name: "pc_tts", description: "Hace que la PC hable un texto en voz alta (texto a voz).", parameters: P({ texto: { type: "string" } }, ["texto"]) },
     { name: "pc_procesos", description: "Lista los procesos de la PC con CPU y memoria (top 25).", parameters: P({}) },
@@ -627,13 +873,14 @@
     { name: "pc_sesiones_opencode", description: "Lista las sesiones de OpenCode guardadas en la PC.", parameters: P({}) }
   );
   SYS.parts[0].text += " TV Roku: la controlas con roku_tecla, roku_app, roku_volumen, roku_buscar, roku_escribir, roku_estado y roku_energia. El volumen va por pasos, no por porcentaje, y no ves la pantalla de la TV, solo la app activa y lo que se reproduce. Para apagar la TV pregunta primero y usa confirmado=true solo cuando el usuario diga que sí. Si una herramienta de la TV dice que no llega al puente, díselo en una frase: inicia el puente en Termux con ./start_bridge.sh. Para poner una canción o video de YouTube en la TV usa roku_youtube (no roku_buscar). Para abrir algo en la TV usa roku_app; para abrir una app en el celular usa abrir_app_movil.";
-  SYS.parts[0].text += " PC: la controlas con pc_estado, pc_listar, pc_archivo, pc_descargar_carpeta, pc_subir, pc_volumen, pc_abrir_url, pc_abrir_app, pc_buscar, pc_info, pc_opencode, pc_portapapeles_leer, pc_portapapeles_escribir, pc_screenshot, pc_media, pc_tts, pc_procesos, pc_matar, pc_ventanas, pc_ventana, pc_buscar_archivos, pc_brillo, pc_notificaciones, pc_terminal, pc_wol, pc_backup y pc_sesiones_opencode. Usa pc_portapapeles para copiar/pegar entre PC y celular; pc_screenshot para ver la pantalla de la PC; pc_media para controlar reproduccion (play/pause/siguiente/anterior); pc_tts para que la PC hable; pc_procesos y pc_matar para gestionar procesos; pc_ventanas y pc_ventana para gestionar ventanas; pc_buscar_archivos para buscar archivos; pc_brillo para el brillo; pc_notificaciones para leer mensajes de la PC; pc_terminal para ejecutar comandos; pc_wol para encender equipos por red; pc_backup para copiar carpetas; pc_sesiones_opencode para listar sesiones. El puente corre en la PC en el puerto 8766; si no responde, dilo en una frase: inicia pc_bridge.js en la PC.";
+  SYS.parts[0].text += " PC: la controlas con pc_estado, pc_listar, pc_archivo, pc_descargar_carpeta, pc_subir, pc_volumen, pc_abrir_url, pc_abrir_app, pc_buscar, pc_info, pc_opencode, pc_portapapeles_leer, pc_portapapeles_escribir, pc_screenshot, pc_ver_pantalla (mirar y analizar la pantalla de la PC), mostrar_imagen (foto real en el holograma y el chat), pc_media, pc_tts, pc_procesos, pc_matar, pc_ventanas, pc_ventana, pc_buscar_archivos, pc_brillo, pc_notificaciones, pc_terminal, pc_wol, pc_backup y pc_sesiones_opencode. Usa pc_portapapeles para copiar/pegar entre PC y celular; pc_screenshot para ver la pantalla de la PC; pc_media para controlar reproduccion (play/pause/siguiente/anterior); pc_tts para que la PC hable; pc_procesos y pc_matar para gestionar procesos; pc_ventanas y pc_ventana para gestionar ventanas; pc_buscar_archivos para buscar archivos; pc_brillo para el brillo; pc_notificaciones para leer mensajes de la PC; pc_terminal para ejecutar comandos; pc_wol para encender equipos por red; pc_backup para copiar carpetas; pc_sesiones_opencode para listar sesiones. El puente corre en la PC en el puerto 8766; si no responde, dilo en una frase: inicia pc_bridge.js en la PC.";
+  SYS.parts[0].text += " Archivos y video de la PC: pc_listar muestra una tarjeta tocable en pantalla; pc_traer trae un archivo al celular (traer = guardarlo y, si es imagen, canción o video, también mostrarlo o reproducirlo; ver = solo mostrarlo); pc_reproducir abre un archivo en la PC con su reproductor; pc_ordenar ordena una carpeta con OpenCode (primero un plan y espera la confirmación; nunca borra); mostrar_video pone un mini video en el holograma y silencia el micrófono mientras suena. AUTOMEJORA: cuando el usuario te pregunte qué quiere que te implementen o qué mejoras podrías tener, sugiere 3 o 4 opciones concretas y realistas según lo que ya sabes hacer; solo cuando él apruebe una opción de forma explícita (por ejemplo «sí, dile a OpenCode que lo implemente») llama a opencode_implementar con aprobado=true y la tarea bien descrita. Tras terminar, OpenCode sube los cambios y tú te actualizas sola; si algo sale mal, ofrece opencode_revertir.";
   SYS.parts[0].text += " Sé preciso con lo que haces: nunca digas que guardaste, recordaste, aprendiste o ejecutaste algo si no llamaste a la herramienta que lo hace (para guardar datos usa recordar); no tienes acceso al brillo ni al volumen del sistema del celular desde esta web, solo al de la app y al de tu voz; y no inventes capacidades.";
-  NECESITA.roku_estado = 1; NECESITA.roku_energia = 1; NECESITA.bateria = 1; NECESITA.ubicacion = 1; NECESITA.nota_leer = 1; NECESITA.temporizadores = 1; NECESITA.pc_listar = 1;
+  NECESITA.roku_estado = 1; NECESITA.roku_energia = 1; NECESITA.bateria = 1; NECESITA.ubicacion = 1; NECESITA.nota_leer = 1; NECESITA.temporizadores = 1; NECESITA.pc_listar = 1; NECESITA.pc_ver_pantalla = 1; NECESITA.pc_ordenar = 1; NECESITA.opencode_implementar = 1; NECESITA.opencode_revertir = 1; NECESITA.nexo_proyecto = 1; NECESITA.buscar_recuerdos = 1;
   SYS.parts[0].text += " Respondes como asistente de voz cálido y con personalidad: una o dos frases cortas y naturales (tres como máximo), sin listas, markdown ni emojis, porque se leen en voz alta; empieza por la respuesta, sin rodeos. Después de usar herramientas cuenta en una frase lo que hiciste; nunca respondas solo «Listo». Tus partículas forman cualquier cosa: palabras, números y la hora con escribir_con_particulas o mostrar_hora; objetos y animales con forma_con_emoji; dibujos propios con forma_con_trazo; cosas que se mueven (un gato caminando, un pájaro volando, un coche) con figura_animada, o con el parámetro movimiento y la herramienta animar. Del celular puedes: linterna, bateria, vibrar, ubicacion, compartir, copiar, abrir_app_movil, volumen_voz, brillo_app, temporizador (también alarmas a una hora), temporizadores (listar o cancelar), notas (nota_guardar, nota_leer, nota_borrar: listas de compras, ideas, apuntes), contacto (llamar, sms, whatsapp; NEXO deja un botón en pantalla y el usuario confirma con un toque), musica (archivos del celular que el usuario elige: elegir, reproducir, pausar, continuar, siguiente, anterior, detener, volumen) y pedir_archivo para que te muestre una foto, PDF, audio o texto. Para música en internet usa abrir_app_movil con youtube o spotify. Si piden el brillo o el volumen del sistema, o abrir el administrador de archivos, explica que desde una web no es posible y ofrece lo que sí puedes. Usa recordar para datos duraderos del usuario (gustos, nombre, rutinas) y las notas para apuntes y listas.";
   function sysAhora() {
     var t = new Date().toLocaleString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).replace(/[  ]/g, " ");
-    return { parts: [{ text: SYS.parts[0].text + "\nAhora mismo: " + t + "." + (mem.length ? "\nLo que recuerdas del usuario:\n- " + mem.join("\n- ") : "") }] };
+    return { parts: [{ text: SYS.parts[0].text + "\nAhora mismo: " + t + "." + (mem.length ? "\nLo que recuerdas del usuario" + (mem.length > 12 ? " (selección; si necesitas algo más usa buscar_recuerdos)" : "") + ":\n- " + memParaPrompt().map(function (m) { return m.t; }).join("\n- ") : "") }] };
   }
   var ENPC = /^http:\/\/(127\.0\.0\.1|localhost)(:|$)/.test(location.origin) || location.protocol === "file:";
   if (!ENPC) {
@@ -807,7 +1054,7 @@
     if (aud && !txt) partes.push({ text: "(Mensaje de voz del usuario. Empieza tu respuesta con la transcripción literal entre dobles corchetes, así: [[lo que dijo]], y a continuación respóndele normalmente.)" });
     if (img) partes.push({ inlineData: { mimeType: "image/jpeg", data: img } });
     if (adjunto) { adjunto.partes.forEach(function (x) { partes.push(x); }); adjunto = null; marcarAdj(); }
-    ultTrans = ""; turno(partes, burbuja, aud && !txt ? ub : null).then(function (r) {
+    ultTrans = ""; prepararMem(txt).then(function () { return turno(partes, burbuja, aud && !txt ? ub : null); }).then(function (r) {
       clearTimeout(vig); ocupado = false; streaming = false; r = (r || "Listo.").trim(); burbuja.textContent = r;
       hist.push({ role: "user", parts: [{ text: txt || ultTrans || "(mensaje de voz)" }] }, { role: "model", parts: [{ text: r }] }); if (hist.length > 16) hist = hist.slice(-16); ls("nexo_hist", JSON.stringify(hist));
       if (!/^(respuesta|feliz|preocupado)$/.test(actual)) fijar(emo || "respuesta"); pulso = 1;
@@ -918,7 +1165,7 @@
       grab = { st: st, src: s, pr: pr, bufs: bufs, rate: a.sampleRate }; grabando = true; hablo = false; piso = 0; t0 = performance.now(); fijar("escucha"); $("bmic").classList.add("on");
     }).catch(function (e) { abriendo = false; fijar("error"); apagarConv(); msg("e", mensajeMic(e)); });
   }
-  function escuchar() {
+  function escuchar() { if (micSilencio) return;
     if (escuchando || grabando || abriendo || ocupado) return;
     if (!window.isSecureContext) { fijar("error"); apagarConv(); msg("e", "El micrófono solo funciona en una página segura (https o localhost). Abre NEXO desde su dirección de GitHub Pages."); return; }
     pararWake(); audio(); detenerVoz(); limpiarTm();
@@ -977,6 +1224,7 @@
   function rapido(s) {
     var m = norm(s); if (m.length > 60) return false;
     if (rokuRapido(s, m)) return true;
+    if (/^(oye |nexo )?(por favor )?(quita|oculta|cierra|esconde|borra)( la| esa)? (imagen|foto)( por favor)?$/.test(m)) { msg("u", s); ocultarImg(); msg("n", "Listo."); return true; }
     if (/^(oye |nexo )?(por favor )?(que hora es|que horas son|que hora tienes|dime la hora|dame la hora|me dices la hora|muestrame la hora|muestra la hora|la hora|hora)( ahora| por favor| actual)?$/.test(m)) {
       msg("u", s); mostrarHora(); var t = horaHablada(); msg("n", t); fijar("respuesta"); pulso = 1; decir(t); return true;
     }
@@ -1051,22 +1299,416 @@
   velo(ls("nexo_brillo") ? +ls("nexo_brillo") : 100);
 
   // ---------- Memoria ----------
-  var mem = []; try { mem = JSON.parse(ls("nexo_mem") || "[]"); if (!Array.isArray(mem)) mem = []; } catch (er) { mem = []; }
-  function guardarMem() { mem = mem.slice(-80); ls("nexo_mem", JSON.stringify(mem)); }
+  // ---------- Imágenes reales: en el holograma y en el chat ----------
+  var himg = $("holoimg"), imgT = 0;
+  function ocultarImg() { clearTimeout(imgT); document.body.classList.remove("imgmode"); document.body.classList.remove("imgwide"); }
+  himg.addEventListener("click", ocultarImg);
+  function mostrarImg(url, secs, ancha) { document.body.classList.toggle("imgwide", !!ancha);
+    return new Promise(function (ok) {
+      himg.onload = function () { document.body.classList.add("imgmode"); ok(true); };
+      himg.onerror = function () { ocultarImg(); ok(false); };
+      himg.src = url; clearTimeout(imgT); if (secs !== 0) imgT = setTimeout(ocultarImg, (secs || 25) * 1000);
+    });
+  }
+  function jget(u, ms) {
+    var ctl = new AbortController(), tm = setTimeout(function () { ctl.abort(); }, ms || 9000);
+    return fetch(u, { signal: ctl.signal }).then(function (r) { clearTimeout(tm); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  }
+  function limpiarTema(q) { return String(q || "").replace(/^(una |un |la |el |las |los )?(foto|fotos|imagen|imagenes|imágenes|fotografia|fotografía|picture)( real)? (de |del |de la |de los |de las )?/i, "").replace(/^(una |un |la |el |las |los )/i, "").trim() || String(q || "").trim(); }
+  function wikiBuscar(host, q) {
+    return jget("https://" + host + "/w/api.php?action=query&generator=search&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=900&format=json&origin=*&gsrsearch=" + encodeURIComponent(q)).then(function (j) {
+      var pg = j.query && j.query.pages; if (!pg) return null;
+      var arr = Object.keys(pg).map(function (k) { return pg[k]; }).sort(function (a, b) { return (a.index || 99) - (b.index || 99); }), p = null;
+      for (var i = 0; i < arr.length; i++) if (arr[i].thumbnail) { p = arr[i]; break; }
+      return p ? { url: p.thumbnail.source, titulo: p.title, fuente: "Wikipedia" } : null;
+    });
+  }
+  function commonsBuscar(q) {
+    return jget("https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|mime&iiurlwidth=900&format=json&origin=*&gsrsearch=" + encodeURIComponent(q)).then(function (j) {
+      var pg = j.query && j.query.pages; if (!pg) return null;
+      var arr = Object.keys(pg).map(function (k) { return pg[k]; }).sort(function (a, b) { return (a.index || 99) - (b.index || 99); });
+      for (var i = 0; i < arr.length; i++) { var ii = arr[i].imageinfo && arr[i].imageinfo[0]; if (ii && /image\/(jpeg|png)/.test(ii.mime || "") && (ii.thumburl || ii.url)) return { url: ii.thumburl || ii.url, titulo: String(arr[i].title || "").replace(/^Archivo:|^File:/, "").replace(/\.\w+$/, ""), fuente: "Wikimedia Commons" }; }
+      return null;
+    });
+  }
+  function buscarImagenReal(q) {
+    var t = limpiarTema(q), pasos = [function () { return wikiBuscar("es.wikipedia.org", t); }, function () { return wikiBuscar("en.wikipedia.org", t); }, function () { return commonsBuscar(t); }], i = 0;
+    function sig() { if (i >= pasos.length) return Promise.resolve(null); return pasos[i++]().catch(function () { return null; }).then(function (r) { return r || sig(); }); }
+    return sig();
+  }
+  function generarImagen(q) {
+    if (!clave) return Promise.resolve(null);
+    var ctl = new AbortController(), tm = setTimeout(function () { ctl.abort(); }, 30000);
+    return fetch(API + "gemini-2.5-flash-image:generateContent", { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": clave }, body: JSON.stringify({ contents: [{ parts: [{ text: "Genera una imagen: " + q }] }], generationConfig: { responseModalities: ["IMAGE", "TEXT"] } }) })
+      .then(function (r) { clearTimeout(tm); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (j) { var ps = (j.candidates && j.candidates[0] && j.candidates[0].content.parts) || []; for (var i = 0; i < ps.length; i++) { var d = ps[i].inlineData || ps[i].inline_data; if (d && d.data) return { url: "data:" + (d.mimeType || d.mime_type || "image/png") + ";base64," + d.data, titulo: q, fuente: "generada por IA" }; } return null; })
+      .catch(function () { return null; });
+  }
+  function imagenEnChat(r) {
+    var d = document.createElement("div"); d.className = "m n im"; var im = document.createElement("img"); im.alt = r.titulo || ""; im.loading = "lazy"; im.src = r.url;
+    im.addEventListener("click", function () { mostrarImg(r.url, 25, r.ancha); }); im.addEventListener("load", function () { chat.scrollTop = chat.scrollHeight; });
+    var c = document.createElement("div"); c.className = "cap"; c.textContent = (r.titulo || "") + " · " + r.fuente;
+    d.appendChild(im); d.appendChild(c); chat.appendChild(d); while (chat.children.length > 60) chat.removeChild(chat.firstChild); chat.scrollTop = chat.scrollHeight;
+  }
+  function mostrarImagen(a) {
+    var q = String((a && a.consulta) || "").trim(), o = (a && a.origen) || "wikipedia", secs = a && a.segundos !== undefined ? +a.segundos : 25;
+    if (!q) return Promise.resolve({ ok: false, error: "Falta qué mostrar." });
+    var p = o === "url" ? Promise.resolve(/^https:\/\//.test(q) ? { url: q, titulo: "imagen", fuente: "enlace" } : null) : o === "generar" ? generarImagen(q).then(function (r) { return r || buscarImagenReal(q); }) : buscarImagenReal(q);
+    return p.then(function (r) {
+      if (!r) return { ok: false, error: "No encontré ninguna imagen para eso." };
+      return mostrarImg(r.url, secs).then(function (ok) {
+        if (!ok) return { ok: false, error: "No pude cargar la imagen." };
+        imagenEnChat(r); return { ok: true, hecho: "Mostrando «" + (r.titulo || q) + "» (" + r.fuente + ") en el holograma y en el chat." };
+      });
+    });
+  }
+
+
+  // ---------- v2.6: PC ↔ celular (imágenes en el chat, explorador, traer archivos, video en el holograma, OpenCode) ----------
+  var micSilencio = false, micAntes = null, tarT = 0, VER0 = null, forzarSw = null;
+  function fmtTam(b) { b = +b || 0; return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : b < 1073741824 ? (b / 1048576).toFixed(1) + " MB" : (b / 1073741824).toFixed(2) + " GB"; }
+  function pcTk() { return ls("nexo_pc_token") || "nexo-pc-2026"; }
+  function nombreDe(r) { return String(r || "").split("/").pop().split("\\").pop() || "archivo"; }
+  function descargarBlob(blob, nombre) { var u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
+  function resumenVoz(s) { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > 380 ? s.slice(0, 380) + "…" : s; }
+  // En pantalla limpia el chat está oculto: las tarjetas (explorador, descargas) salen en una bandeja sobre el orbe.
+  function ponerTarjeta(node) {
+    var limpio = document.body.classList.contains("limpio") && !document.body.classList.contains("teclado");
+    if (limpio) {
+      var t = $("tarjeta"); t.innerHTML = "";
+      var x = document.createElement("button"); x.type = "button"; x.className = "tx"; x.textContent = "✕";
+      x.addEventListener("click", function () { t.classList.remove("on"); t.innerHTML = ""; });
+      t.appendChild(x); t.appendChild(node); t.classList.add("on");
+      clearTimeout(tarT); tarT = setTimeout(function () { t.classList.remove("on"); }, 180000);
+    } else { chat.appendChild(node); while (chat.children.length > 80) chat.removeChild(chat.firstChild); chat.scrollTop = chat.scrollHeight; }
+  }
+  function capturaEnChat(blob, titulo, fuente, aHolo) {
+    var url = URL.createObjectURL(blob);
+    imagenEnChat({ url: url, titulo: titulo, fuente: fuente, ancha: true });
+    var last = chat.lastChild;
+    if (last && last.classList && last.classList.contains("im")) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "mini"; b.textContent = "💾 Guardar";
+      b.addEventListener("click", function () { descargarBlob(blob, "captura_pc_" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + (/jpeg/.test(blob.type) ? ".jpg" : ".png")); });
+      last.appendChild(b);
+    }
+    if (aHolo) mostrarImg(url, 25, true);
+    return url;
+  }
+  function pcScreenshotUI() {
+    var tk = pcTk();
+    return fetch(PC_URL + "/screenshot?token=" + encodeURIComponent(tk), { headers: { "x-token": tk } }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status); return r.blob();
+    }).then(function (blob) {
+      capturaEnChat(blob, "Captura de la PC", "PC", true);
+      return { ok: true, hecho: "Captura mostrada en el holograma y en el chat (se puede guardar con el botón)." };
+    });
+  }
+  function mostrarJpegChat(b64) {
+    try { fetch("data:image/jpeg;base64," + b64).then(function (r) { return r.blob(); }).then(function (b) { capturaEnChat(b, "Pantalla de la PC", "PC", false); }); } catch (e) {}
+  }
+  function iconoArch(n) {
+    return /\.(mp3|m4a|wav|flac|ogg|opus|aac)$/i.test(n) ? "🎵" : /\.(mp4|mkv|webm|mov|avi|3gp)$/i.test(n) ? "🎬" : /\.(jpe?g|png|gif|webp|bmp|heic)$/i.test(n) ? "🖼️" : /\.pdf$/i.test(n) ? "📕" : /\.(zip|rar|7z)$/i.test(n) ? "🗜️" : "📄";
+  }
+  function esMedia(n) { return /\.(mp3|m4a|wav|flac|ogg|opus|aac|mp4|mkv|webm|mov|avi|3gp)$/i.test(n); }
+  function explorador(carpeta, items) {
+    var d = document.createElement("div"); d.className = "m n xp";
+    var base = String(carpeta || "").replace(/[\\\/]+$/, ""), sep = (base.indexOf("\\") >= 0 && base.indexOf("/") < 0) ? "\\" : "/";
+    var t = document.createElement("div"); t.className = "cap"; t.textContent = "📂 " + (carpeta || "PC") + " · " + items.length + (items.length === 1 ? " elemento" : " elementos"); d.appendChild(t);
+    function abrirCarpeta(r) { pc.listar(r).then(function (j) { if (j && j.ok) explorador(r, j.items || []); else msg("e", (j && j.error) || MSG_PC); }); }
+    var padre = base.replace(/[\\\/][^\\\/]*$/, "");
+    if (base && padre && padre !== base && /[\\\/]/.test(base)) {
+      var up = document.createElement("button"); up.type = "button"; up.className = "xi"; up.textContent = "⬆️ Carpeta superior";
+      up.addEventListener("click", function () { abrirCarpeta(padre); }); d.appendChild(up);
+    }
+    items.slice(0, 60).forEach(function (it) {
+      var esC = it.tipo === "carpeta", ruta = it.ruta || (base + sep + it.nombre);
+      var fila = document.createElement("div"); fila.className = "xr";
+      var b = document.createElement("button"); b.type = "button"; b.className = "xi";
+      b.textContent = (esC ? "📁 " : iconoArch(it.nombre) + " ") + it.nombre + (!esC && it.tamano != null ? " · " + fmtTam(it.tamano) : "");
+      b.addEventListener("click", function () { if (esC) abrirCarpeta(ruta); else traerArchivo({ ruta: ruta, accion: "traer" }); });
+      fila.appendChild(b);
+      if (!esC && esMedia(it.nombre)) {
+        var s = document.createElement("button"); s.type = "button"; s.className = "xs"; s.title = "Reproducir en la PC"; s.textContent = "💻";
+        s.addEventListener("click", function () { pcReproducir({ ruta: ruta }).then(function (r) { msg(r.ok ? "n" : "e", r.hecho || r.error); }); }); fila.appendChild(s);
+      }
+      d.appendChild(fila);
+    });
+    if (items.length > 60) { var mas = document.createElement("div"); mas.className = "cap"; mas.textContent = "…y " + (items.length - 60) + " más. Pídeme buscar algo en concreto."; d.appendChild(mas); }
+    ponerTarjeta(d);
+  }
+  function tarjetaDescarga(nombre) {
+    var d = document.createElement("div"); d.className = "m n fl";
+    var t = document.createElement("div"); t.className = "ft"; t.textContent = iconoArch(nombre) + " " + nombre;
+    var bar = document.createElement("div"); bar.className = "fb"; var fill = document.createElement("i"); bar.appendChild(fill);
+    var st = document.createElement("div"); st.className = "cap"; st.textContent = "Pidiéndolo a la PC…";
+    d.appendChild(t); d.appendChild(bar); d.appendChild(st); ponerTarjeta(d);
+    return {
+      prog: function (r, tot) { fill.style.width = (tot ? Math.min(100, r / tot * 100) : 60) + "%"; st.textContent = fmtTam(r) + (tot ? " de " + fmtTam(tot) : ""); },
+      listo: function (blob, nom) {
+        bar.remove(); st.textContent = fmtTam(blob.size) + " · en tu celular";
+        var fila = document.createElement("div"); fila.className = "fa";
+        var g = document.createElement("button"); g.type = "button"; g.className = "mini"; g.textContent = "💾 Guardar"; g.addEventListener("click", function () { descargarBlob(blob, nom); }); fila.appendChild(g);
+        try { var f = new File([blob], nom, { type: blob.type || "application/octet-stream" }); if (navigator.canShare && navigator.canShare({ files: [f] })) { var c = document.createElement("button"); c.type = "button"; c.className = "mini"; c.textContent = "📤 Compartir"; c.addEventListener("click", function () { navigator.share({ files: [f], title: nom }).catch(function () {}); }); fila.appendChild(c); } } catch (e) {}
+        d.appendChild(fila);
+      },
+      error: function (m) { bar.remove(); st.textContent = "❌ " + m; }
+    };
+  }
+  var MAXTRAER = 400 * 1048576;
+  function pcBlob(ruta, cb) {
+    return fetch(pc.archivoUrl(ruta), { headers: { "x-token": pcTk() } }).then(function (r) {
+      if (!r.ok) throw new Error(r.status === 404 ? "no existe ese archivo" : "HTTP " + r.status);
+      var total = +r.headers.get("content-length") || 0, tipo = r.headers.get("content-type") || "";
+      if (total > MAXTRAER) throw new Error("pesa " + fmtTam(total) + " y el máximo es " + fmtTam(MAXTRAER));
+      if (!r.body || !r.body.getReader) return r.blob().then(function (b) { return { blob: b, tipo: tipo }; });
+      var rd = r.body.getReader(), partes = [], rec = 0;
+      function paso() { return rd.read().then(function (x) { if (x.done) return { blob: new Blob(partes, { type: tipo }), tipo: tipo }; partes.push(x.value); rec += x.value.length; if (cb) cb(rec, total); return paso(); }); }
+      return paso();
+    });
+  }
+  function traerArchivo(a) {
+    var ruta = String((a && a.ruta) || "").trim(), acc = (a && a.accion) || "traer";
+    if (!ruta) return Promise.resolve({ ok: false, error: "Falta la ruta del archivo. Usa pc_listar para verla." });
+    var nombre = nombreDe(ruta), tj = tarjetaDescarga(nombre);
+    return pcBlob(ruta, tj.prog).then(function (x) {
+      var blob = x.blob, img = /^image\//.test(blob.type) || /\.(jpe?g|png|gif|webp|bmp)$/i.test(nombre), av = esMedia(nombre) || /^(audio|video)\//.test(blob.type);
+      tj.listo(blob, nombre);
+      if (img) { capturaEnChat(blob, nombre, "PC", true); if (acc === "traer") descargarBlob(blob, nombre); return { ok: true, hecho: "«" + nombre + "» (" + fmtTam(blob.size) + ") ya está en tu celular y la muestro en el holograma." }; }
+      if (av) {
+        cargarMedia([new File([blob], nombre, { type: blob.type || "" })]);
+        if (acc === "traer") descargarBlob(blob, nombre);
+        return { ok: true, hecho: "«" + nombre + "» (" + fmtTam(blob.size) + ") ya está en tu celular y se está reproduciendo." };
+      }
+      descargarBlob(blob, nombre);
+      return { ok: true, hecho: "«" + nombre + "» (" + fmtTam(blob.size) + ") quedó guardado en tu celular." };
+    }).catch(function (e) { tj.error(e && e.message || "error"); return { ok: false, error: "No pude traer el archivo: " + (e && e.message) }; });
+  }
+  function pcReproducir(a) {
+    var ruta = String((a && a.ruta) || "").trim();
+    if (!ruta) return Promise.resolve({ ok: false, error: "Falta la ruta del archivo." });
+    if (/["&|;<>`\r\n]/.test(ruta)) return Promise.resolve({ ok: false, error: "La ruta tiene caracteres que no puedo usar." });
+    return pc.terminal("explorer.exe \"" + ruta + "\"").then(function (j) {
+      if (!j || j.ok === false) return { ok: false, error: (j && j.error) || MSG_PC };
+      return { ok: true, hecho: "Abrí «" + nombreDe(ruta) + "» en la PC con su programa predeterminado." };
+    }).catch(function () { return { ok: false, error: MSG_PC }; });
+  }
+  // ---- OpenCode: tareas largas con contador y botón para dejar de esperar ----
+  function ocEnviar(prompt, cwd, titulo) {
+    var tk = pcTk(), ctl = new AbortController(), t0 = Date.now();
+    var qs = "prompt=" + encodeURIComponent(prompt) + "&token=" + encodeURIComponent(tk) + (cwd ? "&cwd=" + encodeURIComponent(cwd) : "");
+    var cb = chip("🤖 " + titulo + "… 0 s · toca para dejar de esperar", function () { ctl.abort(); }, "oc");
+    var iv = setInterval(function () { if (cb.parentNode) cb.textContent = "🤖 " + titulo + "… " + Math.round((Date.now() - t0) / 1000) + " s · toca para dejar de esperar"; }, 1000);
+    var lim = setTimeout(function () { ctl.abort(); }, 20 * 60 * 1000); fijar("procesando");
+    return fetch(PC_URL + "/opencode?" + qs, { headers: { "x-token": tk }, signal: ctl.signal }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) return { ok: false, error: (j && j.error) || MSG_PC };
+      return { ok: true, hecho: String(j.output || "").trim() || "OpenCode terminó sin salida." };
+    }).catch(function (e) { return { ok: false, error: e && e.name === "AbortError" ? "Dejé de esperar a OpenCode (puede seguir trabajando en la PC)." : MSG_PC }; }).then(function (r) {
+      clearInterval(iv); clearTimeout(lim); if (cb.parentNode) cb.remove(); fijar(r.ok ? "respuesta" : "error"); setTimeout(function () { fijar("reposo"); }, 2500); return r;
+    });
+  }
+  function pcOrdenar(a) {
+    var carpeta = String((a && a.carpeta) || "escritorio").trim(), crit = String((a && a.criterio) || "por tipo de archivo").trim();
+    if (/["&|;<>`]/.test(carpeta + crit)) return Promise.resolve({ ok: false, error: "Hay caracteres que no puedo usar en la carpeta o el criterio." });
+    var base = "Trabaja SOLO dentro de la carpeta «" + carpeta + "» del usuario de Windows (escritorio = Desktop, documentos = Documents, descargas = Downloads) y no salgas de ella. ";
+    return ocEnviar(base + "Analiza su contenido y propone cómo ordenarla " + crit + ". NO muevas, renombres ni borres nada todavía. Responde en español, máximo 8 líneas: cuántos archivos hay, qué carpetas nuevas crearías y cuántos archivos irían a cada una.", null, "Analizando «" + carpeta + "»").then(function (r) {
+      if (!r.ok) return r;
+      chip("✅ Sí, ordenar «" + carpeta + "»", function () {
+        ocEnviar(base + "Ejecuta el orden " + crit + " que propusiste: crea las carpetas necesarias y MUEVE los archivos. Nunca borres ni sobrescribas (si un nombre se repite, agrega un número). No toques accesos directos ni archivos del sistema. Al terminar guarda el registro de cada movimiento (origen → destino) en «_nexo_deshacer.txt» dentro de la carpeta y resume en máximo 6 líneas qué hiciste.", null, "Ordenando «" + carpeta + "»").then(function (r2) { mostrarResultado(r2.ok ? { ok: true, hecho: "Listo. " + resumenVoz(r2.hecho) } : r2); });
+      }, "ordenar");
+      chip("✖ No ordenar", function () { msg("n", "Listo, no toqué nada."); }, "ordenarno");
+      return { ok: true, hecho: "Plan de OpenCode: " + r.hecho + "\n\nMostré los botones «Sí, ordenar» y «No ordenar». Resume el plan en una frase y pregunta si lo ejecutamos. NO digas que ya ordenaste." };
+    });
+  }
+  // ---- NEXO le pide a OpenCode que lo mejore y se actualiza solo ----
+  function nexoProyecto(a) {
+    var r = String((a && a.ruta) || "").trim();
+    if (!r) { var c = ls("nexo_proy_cwd"); return Promise.resolve(c ? { ok: true, hecho: "Mi proyecto está en: " + c } : { ok: false, error: "Aún no tengo la carpeta de mi proyecto." }); }
+    if (/["&|;<>`]/.test(r)) return Promise.resolve({ ok: false, error: "La ruta tiene caracteres que no puedo usar." });
+    ls("nexo_proy_cwd", r); return Promise.resolve({ ok: true, hecho: "Guardé la carpeta de mi proyecto: " + r });
+  }
+  function swVersion() { return fetch("sw.js?_=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.text(); }).then(function (t) { var m = t.match(/const C = "([^"]+)"/); return m ? m[1] : null; }); }
+  swVersion().then(function (v) { VER0 = v; }).catch(function () {});
+  function esperarActualizacion() {
+    var base = VER0, t0 = Date.now();
+    chip("🔄 Actualizarme ahora", function () { location.reload(); }, "actu");
+    var iv = setInterval(function () {
+      if (Date.now() - t0 > 300000) { clearInterval(iv); return; }
+      swVersion().then(function (v) {
+        if (v && base && v !== base && !ocupado) { clearInterval(iv); mostrarResultado({ ok: true, hecho: "Ya tengo una versión nueva (" + v + "). Me reinicio para estrenarla." }); setTimeout(function () { location.reload(); }, 4500); }
+      }).catch(function () {});
+    }, 10000);
+  }
+  function promptImplementar(tarea) {
+    return "Eres el desarrollador de NEXO AI, una PWA (index.html, style.css, app.js, sw.js, manifest.json) que está en esta carpeta y se publica con GitHub Pages. TAREA: " + tarea + "\n\nREGLAS: 1) Antes de tocar nada haz una copia de seguridad con git: `git add -A`, `git commit -m \"backup antes de cambio de NEXO\" --allow-empty` y `git tag nexo-backup-AAAAMMDD-HHMM`. 2) Haz el cambio mínimo necesario sin romper lo que ya funciona. 3) En sw.js sube en 1 el número de la versión del caché (const C = \"nexo-vNN\"). 4) Valida con `node --check app.js`; si falla, corrígelo o revierte. 5) Si todo está bien: `git add -A`, `git commit -m \"NEXO: <resumen corto>\"` y `git push`. Si el push falla, dilo. 6) No borres archivos ni toques claves o tokens. Responde en español, máximo 8 líneas: qué cambiaste, la nueva versión del caché y si se subió a GitHub.";
+  }
+  function lanzarConCuenta(titulo, ejecutar) {
+    var n = 6, cancelado = false, iv, cb = chip("✖ Cancelar envío a OpenCode (6)", function () { cancelado = true; clearInterval(iv); msg("n", "Cancelado, no se envió nada a OpenCode."); }, "impl");
+    iv = setInterval(function () {
+      if (cancelado) { clearInterval(iv); return; }
+      n--; if (n <= 0) { clearInterval(iv); if (cb.parentNode) cb.remove(); ejecutar(); } else if (cb.parentNode) cb.textContent = "✖ Cancelar envío a OpenCode (" + n + ")"; else clearInterval(iv);
+    }, 1000);
+  }
+  function opencodeImplementar(a) {
+    var tarea = String((a && a.tarea) || "").trim(), cwd = ls("nexo_proy_cwd");
+    if (!tarea) return Promise.resolve({ ok: false, error: "Falta describir qué implementar." });
+    if (!a || a.aprobado !== true) return Promise.resolve({ ok: false, error: "El usuario todavía no aprobó una opción. Propón 3 o 4 ideas y espera a que diga cuál." });
+    if (!cwd) return Promise.resolve({ ok: false, error: "No sé en qué carpeta de la PC está mi proyecto. Pídele al usuario la ruta (por ejemplo C:\\Users\\...\\nexo) y guárdala con nexo_proyecto." });
+    lanzarConCuenta("implementar", function () {
+      ocEnviar(promptImplementar(tarea), cwd, "OpenCode implementando").then(function (r) {
+        if (!r.ok) { mostrarResultado(r); return; }
+        mostrarResultado({ ok: true, hecho: "OpenCode terminó. " + resumenVoz(r.hecho) }); esperarActualizacion();
+      });
+    });
+    return Promise.resolve({ ok: true, hecho: "Se enviará a OpenCode en 6 segundos (el usuario puede cancelar con el botón). Dile en una frase qué le pediste: «" + tarea.slice(0, 140) + "». NO digas que ya está implementado." });
+  }
+  function opencodeRevertir(a) {
+    var cwd = ls("nexo_proy_cwd");
+    if (!a || a.aprobado !== true) return Promise.resolve({ ok: false, error: "Pregunta primero si el usuario quiere volver a la versión anterior." });
+    if (!cwd) return Promise.resolve({ ok: false, error: "No sé en qué carpeta de la PC está mi proyecto (usa nexo_proyecto)." });
+    lanzarConCuenta("revertir", function () {
+      ocEnviar("Eres el desarrollador de NEXO AI (PWA en esta carpeta, publicada con GitHub Pages). El último cambio dejó la app mal. Vuelve al estado anterior con git: usa el último tag `nexo-backup-*` (o `git revert HEAD` si no hay) y deja los archivos como estaban. Sube en 1 la versión del caché en sw.js (const C = \"nexo-vNN\"), valida con `node --check app.js`, haz commit y `git push`. Responde en español en máximo 4 líneas.", cwd, "OpenCode revirtiendo").then(function (r) {
+        if (!r.ok) { mostrarResultado(r); return; }
+        mostrarResultado({ ok: true, hecho: "OpenCode terminó. " + resumenVoz(r.hecho) }); esperarActualizacion();
+      });
+    });
+    return Promise.resolve({ ok: true, hecho: "Se le pedirá a OpenCode volver a la versión anterior en 6 segundos (cancelable). NO digas que ya quedó." });
+  }
+  // ---- mini video en el holograma (con sonido y micrófono silenciado) ----
+  var hvid = $("holovid"), vidT = 0;
+  function silenciarMicVideo() {
+    if (micSilencio) return; micAntes = { conv: conv, wake: wakeOn }; micSilencio = true;
+    try { if (conv) apagarConv(""); if (sr) { srCancel = true; sr.abort(); } else if (grabando) detenerMic(false); pararWake(); } catch (e) {}
+  }
+  function restaurarMic() {
+    if (!micSilencio) return; micSilencio = false; var m = micAntes; micAntes = null; if (!m) return;
+    try { if (m.conv) { conv = true; convWake = false; sinVoz = 0; marcarConv(); pantalla(true); if (!ocupado) escuchar(); } else if (m.wake && wakeOn) programarWake(700); } catch (e) {}
+  }
+  function cerrarVideo() {
+    clearTimeout(vidT); try { hvid.pause(); } catch (e) {} hvid.onended = null; hvid.onerror = null; hvid.onplaying = null;
+    hvid.removeAttribute("src"); try { hvid.load(); } catch (e) {} document.body.classList.remove("vidmode"); restaurarMic();
+  }
+  hvid.addEventListener("click", cerrarVideo);
+  function buscarVideoPexels(q) {
+    var k = ls("nexo_pexels");
+    if (!k) {
+      chip("🔑 Poner clave de Pexels", function () { var v = prompt("Pega tu clave gratis de Pexels (pexels.com/api):"); if (v && v.trim()) { ls("nexo_pexels", v.trim()); msg("n", "Clave guardada. Pídeme el video otra vez."); } }, "pexels");
+      return Promise.resolve({ error: "Para buscar videos en internet necesito una clave gratis de Pexels (pexels.com/api). Dejé un botón para pegarla." });
+    }
+    return fetch("https://api.pexels.com/videos/search?per_page=8&orientation=portrait&query=" + encodeURIComponent(q), { headers: { Authorization: k } }).then(function (r) {
+      if (!r.ok) throw new Error("Pexels HTTP " + r.status); return r.json();
+    }).then(function (j) {
+      var vs = (j && j.videos) || []; if (!vs.length) return null;
+      var v = vs[Math.floor(Math.random() * Math.min(5, vs.length))];
+      var fs = (v.video_files || []).filter(function (f) { return /mp4/.test(f.file_type || "") && f.width && f.width <= 1100; }).sort(function (x, y) { return Math.abs(x.width - 720) - Math.abs(y.width - 720); });
+      var f = fs[0] || (v.video_files || [])[0]; return f ? { url: f.link, titulo: "Pexels: " + q } : null;
+    }).catch(function (e) { return { error: "No pude buscar el video: " + e.message }; });
+  }
+  function mostrarVideo(a) {
+    var q = String((a && a.consulta) || "").trim(), origen = (a && a.origen) || "web", secs = a && a.segundos !== undefined ? +a.segundos : 30, sonido = !(a && a.sonido === false);
+    if (!q) return Promise.resolve({ ok: false, error: "Falta qué video mostrar." });
+    var p = origen === "pc" ? pcBlob(q).then(function (x) { return { url: URL.createObjectURL(x.blob), titulo: nombreDe(q) }; })
+      : origen === "url" ? Promise.resolve(/^https:\/\//.test(q) ? { url: q, titulo: "video" } : { error: "Solo acepto enlaces https." }) : buscarVideoPexels(q);
+    return p.then(function (v) {
+      if (!v) return { ok: false, error: "No encontré un video para eso." };
+      if (v.error) return { ok: false, error: v.error };
+      return new Promise(function (ok) {
+        cerrarVideo(); ocultarImg(); if (sonido) silenciarMicVideo();
+        var listo = false, falla = setTimeout(function () { if (!listo) { cerrarVideo(); ok({ ok: false, error: "El video tardó demasiado en cargar." }); } }, 20000);
+        hvid.onerror = function () { clearTimeout(falla); cerrarVideo(); if (!listo) ok({ ok: false, error: "No pude reproducir ese video." }); };
+        hvid.onplaying = function () {
+          if (listo) return; listo = true; clearTimeout(falla); document.body.classList.add("vidmode");
+          if (secs > 0) vidT = setTimeout(cerrarVideo, secs * 1000);
+          if (sonido) setTimeout(function () { if (typeof hvid.webkitAudioDecodedByteCount === "number" && hvid.webkitAudioDecodedByteCount === 0 && !hvid.muted) msg("n", "Este clip no trae sonido."); }, 1800);
+          ok({ ok: true, hecho: "Mostrando «" + v.titulo + "» en el holograma" + (sonido ? ", con su sonido y el micrófono silenciado hasta que termine." : ".") });
+        };
+        hvid.onended = function () { if (!hvid.loop) cerrarVideo(); };
+        hvid.src = v.url; hvid.muted = !sonido; hvid.loop = !!(a && a.bucle); hvid.playsInline = true;
+        var pr = hvid.play();
+        if (pr && pr.catch) pr.catch(function () { if (!sonido) return; hvid.muted = true; restaurarMic(); msg("n", "El navegador bloqueó el sonido; lo muestro sin audio."); try { hvid.play(); } catch (e) {} });
+      });
+    }).catch(function (e) { return { ok: false, error: "No pude mostrar el video: " + (e && e.message) }; });
+  }
+  window.nexoPC = { pcScreenshotUI: pcScreenshotUI, traerArchivo: traerArchivo, explorador: explorador, pcReproducir: pcReproducir, pcOrdenar: pcOrdenar, mostrarVideo: mostrarVideo, cerrarVideo: cerrarVideo, opencodeImplementar: opencodeImplementar, opencodeRevertir: opencodeRevertir, nexoProyecto: nexoProyecto, ocEnviar: ocEnviar, estadoMic: function () { return { silencio: micSilencio }; } };
+
+
+  // ---------- Memoria semántica (hechos + embeddings, todo en este navegador) ----------
+  var MEMMAX = 300, EMB = "gemini-embedding-001", memTop = null, embFalla = 0, embTmr = 0;
+  var mem = [];
+  try {
+    var m2 = JSON.parse(ls("nexo_mem2") || "null");
+    if (Array.isArray(m2)) mem = m2.filter(function (x) { return x && typeof x.t === "string"; });
+    else { var m1 = JSON.parse(ls("nexo_mem") || "[]"); if (Array.isArray(m1)) mem = m1.filter(function (x) { return typeof x === "string"; }).map(function (t, i) { return { t: t, ts: Date.now() - (m1.length - i) * 1000, u: 0 }; }); }
+  } catch (er) { mem = []; }
+  function guardarMem() {
+    if (mem.length > MEMMAX) { var ord = mem.slice().sort(function (x, y) { return (x.u * 1e12 + x.ts) - (y.u * 1e12 + y.ts); }), fuera = ord.slice(0, mem.length - MEMMAX); mem = mem.filter(function (x) { return fuera.indexOf(x) < 0; }); }
+    try { localStorage.setItem("nexo_mem2", JSON.stringify(mem)); } catch (er) { try { localStorage.setItem("nexo_mem2", JSON.stringify(mem.map(function (x) { return { t: x.t, ts: x.ts, u: x.u }; }))); } catch (er2) {} }
+  }
+  function embedir(txt, tarea, ms) {
+    if (!clave || embFalla >= 3) return Promise.reject(new Error("sin embeddings"));
+    var ac = new AbortController(), tm = setTimeout(function () { ac.abort(); }, ms || 6000);
+    return fetch(API + EMB + ":embedContent", { method: "POST", signal: ac.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": clave },
+      body: JSON.stringify({ model: "models/" + EMB, content: { parts: [{ text: String(txt).slice(0, 600) }] }, taskType: tarea || "SEMANTIC_SIMILARITY", outputDimensionality: 256 }) })
+      .then(function (r) { clearTimeout(tm); if (!r.ok) { embFalla++; dlog("Memoria: embeddings HTTP " + r.status); throw new Error("HTTP " + r.status); } return r.json(); })
+      .then(function (j) {
+        var v = j.embedding && j.embedding.values; if (!v || !v.length) throw new Error("vacío");
+        var n = 0, i; for (i = 0; i < v.length; i++) n += v[i] * v[i]; n = Math.sqrt(n) || 1; embFalla = 0;
+        return v.map(function (x) { return Math.round(x / n * 1000) / 1000; });
+      }, function (e) { clearTimeout(tm); throw e; });
+  }
+  function embedirPend() {
+    clearTimeout(embTmr); if (!clave || embFalla >= 3) return;
+    var m = null, i; for (i = 0; i < mem.length; i++) if (!mem[i].e) { m = mem[i]; break; }
+    if (!m) return;
+    embedir(m.t, "SEMANTIC_SIMILARITY").then(function (v) { m.e = v; guardarMem(); embTmr = setTimeout(embedirPend, 400); }).catch(function () { embTmr = setTimeout(embedirPend, 15000); });
+  }
+  function tokens(t) { return norm(t).split(" ").filter(function (w) { return w.length > 3; }).map(function (w) { return w.slice(0, 5); }); }
+  function rankMem(q, qe, k) {
+    var qt = tokens(q);
+    return mem.map(function (m) {
+      var sem = 0, lex = 0, i;
+      if (qe && m.e && m.e.length === qe.length) { for (i = 0; i < qe.length; i++) sem += qe[i] * m.e[i]; }
+      if (qt.length) { var mt = " " + tokens(m.t).join(" ") + " "; var h = 0; qt.forEach(function (w) { if (mt.indexOf(" " + w + " ") >= 0) h++; }); lex = h / qt.length; }
+      return { m: m, s: (sem > .6 ? sem : 0) + .6 * lex };
+    }).filter(function (x) { return x.s > .3; }).sort(function (x, y) { return y.s - x.s; }).slice(0, k || 8).map(function (x) { return x.m; });
+  }
+  function prepararMem(txt) {
+    memTop = null; if (mem.length <= 12 || !txt || String(txt).length < 4) return Promise.resolve();
+    return embedir(txt, "SEMANTIC_SIMILARITY", 700).catch(function () { return null; }).then(function (qe) {
+      memTop = rankMem(txt, qe, 10); memTop.forEach(function (m) { m.u = (m.u || 0) + 1; });
+    });
+  }
+  function memParaPrompt() {
+    if (mem.length <= 12) return mem;
+    var base = memTop || [], rec = mem.slice(-5), fav = mem.slice().sort(function (x, y) { return (y.u || 0) - (x.u || 0); }).slice(0, 5), out = [];
+    base.concat(rec, fav).forEach(function (m) { if (out.indexOf(m) < 0) out.push(m); });
+    return out.slice(0, 18);
+  }
+  var SENS = /\b\d{13,19}\b|contrase[nñ]a|password|cvv|pin\s*\d/i;
   function recordar(d) {
     d = String(d || "").trim().slice(0, 300); if (d.length < 3) return { ok: false, error: "No hay nada que recordar." };
-    if (mem.some(function (x) { return norm(x) === norm(d); })) return { ok: true, hecho: "Ya lo tenía anotado." };
-    mem.push(d); guardarMem(); return { ok: true, hecho: "Anotado." };
+    if (SENS.test(d)) return { ok: false, error: "Eso es un dato sensible (contraseña o número de tarjeta); no lo guardo." };
+    if (mem.some(function (x) { return norm(x.t) === norm(d); })) return { ok: true, hecho: "Ya lo tenía anotado." };
+    mem.push({ t: d, ts: Date.now(), u: 0 }); guardarMem(); clearTimeout(embTmr); embTmr = setTimeout(embedirPend, 300); return { ok: true, hecho: "Anotado." };
   }
   function olvidar(t) {
     var n0 = mem.length, k = norm(t || ""); if (!k) return { ok: false, error: "Dime qué debo olvidar." };
-    mem = mem.filter(function (x) { return norm(x).indexOf(k) < 0; }); guardarMem();
+    mem = mem.filter(function (x) { return norm(x.t).indexOf(k) < 0; }); guardarMem();
     return mem.length < n0 ? { ok: true, hecho: "Olvidado." } : { ok: false, error: "No tenía nada sobre eso." };
   }
+  function buscarRecuerdos(tema) {
+    tema = String(tema || "").trim();
+    if (!mem.length) return Promise.resolve({ ok: true, recuerdos: [], hecho: "Todavía no sé nada del usuario." });
+    if (!tema) return Promise.resolve({ ok: true, total: mem.length, recuerdos: mem.slice(-40).map(function (m) { return m.t; }) });
+    return embedir(tema, "SEMANTIC_SIMILARITY", 2500).catch(function () { return null; }).then(function (qe) {
+      var r = rankMem(tema, qe, 8); r.forEach(function (m) { m.u = (m.u || 0) + 1; }); guardarMem();
+      return { ok: true, total: mem.length, recuerdos: r.map(function (m) { return m.t; }), hecho: r.length ? undefined : "No encontré nada sobre eso." };
+    });
+  }
+  setTimeout(embedirPend, 5000);
   function cargarHist() {
     try { var h = JSON.parse(ls("nexo_hist") || "[]"); if (!Array.isArray(h)) return []; h = h.filter(function (x) { return x && x.role && x.parts && x.parts[0] && typeof x.parts[0].text === "string"; }).slice(-16); while (h.length && h[0].role !== "user") h.shift(); return h; } catch (er) { return []; }
   }
-  $("borrar").addEventListener("click", function () { if (!window.confirm("¿Borrar todo lo que recuerdo de ti y la conversación guardada?")) return; mem = []; hist = []; ls("nexo_mem", null); ls("nexo_hist", null); msg("n", "Listo, empecé de cero."); });
+  $("borrar").addEventListener("click", function () { if (!window.confirm("¿Borrar todo lo que recuerdo de ti y la conversación guardada?")) return; mem = []; memTop = null; hist = []; ls("nexo_mem", null); ls("nexo_mem2", null); ls("nexo_hist", null); msg("n", "Listo, empecé de cero."); });
 
   // ---------- Voz del navegador (selector) ----------
   function llenarVoces() {
@@ -1106,7 +1748,7 @@
     fijar("escucha"); pulso = 1; etiqueta.textContent = resp;
     if (window.speechSynthesis && $("vozon").checked) frase(resp, function () { escuchar(); }); else setTimeout(escuchar, 350);
   }
-  function iniciarWake() {
+  function iniciarWake() { if (micSilencio) return;
     if (wakeSR) return;
     var r = new SR(), err = "";
     wakeSR = r; r.lang = /^es/i.test(navigator.language || "") ? navigator.language : "es-ES"; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
@@ -1287,6 +1929,7 @@
     else if (a === "tm") msg("n", textoTm());
     else if (a === "notas") msg("n", textoNotas());
     else if (a === "piramide") ponerHolo(!holo);
+    else if (a === "estilo") { var rr0 = ponerEstilo(!estiloN); msg("n", rr0.hecho); }
     else if (a === "controles") { $("pruebas").open = true; }
     else if (a === "diag") abrirDiag();
     else if (a === "live") { $("liveon").checked = !liveOn; $("liveon").dispatchEvent(new Event("change")); if (liveOn && !live) liveToggle(); }
@@ -1512,7 +2155,7 @@
       "Hasta que empieza la voz (modo normal): " + est(M.aud),
       "Voz de Gemini (TTS): ok " + M.ttsOk + " · fallos " + M.ttsFail + " · tiempo " + est(M.ttsMs) + (Date.now() - ttsMalo < 300000 ? " · USANDO VOZ DEL NAVEGADOR por fallo reciente" : ""),
       "Voz elegida: " + selVoz.value + " · motor de micrófono: " + motorMic,
-      "Modo en vivo: " + (liveOn ? "activado" : "apagado") + " · estado: " + M.live.estado + " · conexión: " + (M.live.setupMs ? M.live.setupMs + " ms" : "—") + " · 1er audio tras tu última palabra: " + est(M.live.audioMs) + " · cierres: " + M.live.cierres + (M.live.ultimo ? " · último cierre: " + M.live.ultimo : ""),
+      "Modo en vivo: " + (liveOn ? "activado" : "apagado") + " · estado: " + M.live.estado + " · micrófono: " + (M.live.mic || "—") + " · conexión: " + (M.live.setupMs ? M.live.setupMs + " ms" : "—") + " · 1er audio tras tu última palabra: " + est(M.live.audioMs) + " · cierres: " + M.live.cierres + (M.live.ultimo ? " · último cierre: " + M.live.ultimo : ""),
       "Puente de la TV: " + (rokuVivo ? "ha respondido antes" : "nunca ha respondido") + " · " + ROKU_URL + " · último: " + (M.rokuUlt || "—"),
       "— Últimos avisos —"
     ].concat(DL.length ? DL : ["(ninguno)"]).concat(["", "Navegador: " + navigator.userAgent]);
@@ -1577,15 +2220,47 @@
     liveStop("El modo en vivo no pudo conectar (" + (String(motivo).trim() || "sin detalle") + "). Lo apagué y sigo con el modo normal; el motivo queda en Diagnóstico.", true);
   }
   function b64Int16(pcm) { var u = new Uint8Array(pcm.buffer), s = ""; for (var i = 0; i < u.length; i += 0x2000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x2000)); return btoa(s); }
+  // Captura del modo en vivo: AudioWorklet (hilo de audio, sin tirones) con respaldo a ScriptProcessor.
+  var WK_SRC = "class P extends AudioWorkletProcessor{constructor(o){super();this.r=o.processorOptions.ratio;this.pos=0;this.acc=0;this.cnt=0;this.hp=0;this.pv=0;this.b=new Int16Array(800);this.i=0;this.e=0}" +
+    "process(inp){var x=inp[0]&&inp[0][0];if(!x)return true;for(var k=0;k<x.length;k++){this.acc+=x[k];this.cnt++;this.pos+=1;if(this.pos>=this.r){var v=this.acc/this.cnt;this.acc=0;this.cnt=0;this.pos-=this.r;var y=v-this.pv+.96*this.hp;this.pv=v;this.hp=y;if(y>1)y=1;else if(y<-1)y=-1;this.e+=y*y;this.b[this.i++]=y*32767;" +
+    "if(this.i===800){var o=this.b;this.port.postMessage({pcm:o.buffer,rms:Math.sqrt(this.e/800)},[o.buffer]);this.b=new Int16Array(800);this.i=0;this.e=0}}}return true}}registerProcessor('nexo-pcm',P)";
+  function liveEnviar(L, pcm, rms) {
+    if (live !== L || !L.ok || !L.ws || L.ws.readyState !== 1) return;
+    var ahora = performance.now(), gate = !liveInt && (hablando || ahora < L.gateHasta);
+    if (gate) {
+      // corte de voz inteligente: si hablas fuerte y sostenido mientras NEXO habla, lo interrumpo (el eco ya viene filtrado por el navegador)
+      if (hablando && ls("nexo_barge") !== "0" && rms > .11) { L.fuerte = (L.fuerte || 0) + 1; if (L.fuerte >= 5) { L.fuerte = 0; dlog("Live: corte de voz (rms " + rms.toFixed(2) + ")"); liveCortar(L); L.gateHasta = 0; } } else L.fuerte = 0;
+      return;
+    }
+    L.fuerte = 0; if (rms > .02) pulso = Math.max(pulso, Math.min(1.1, rms * 7));
+    try { L.ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64Int16(pcm), mimeType: "audio/pcm;rate=16000" } } })); } catch (er) {}
+  }
   function liveMic(L) {
-    if (L.pr) return; var a = ac, ratio = a.sampleRate / 16000;
+    if (L.pr || L.wk) return; var a = ac;
+    if (a.audioWorklet && window.AudioWorkletNode && window.Blob && window.URL && URL.createObjectURL) {
+      L.wk = true; var url;
+      try { url = URL.createObjectURL(new Blob([WK_SRC], { type: "application/javascript" })); } catch (er) { L.wk = false; return liveMicSP(L); }
+      a.audioWorklet.addModule(url).then(function () {
+        try { URL.revokeObjectURL(url); } catch (er) {}
+        if (live !== L) return;
+        var nodo = new AudioWorkletNode(a, "nexo-pcm", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { ratio: a.sampleRate / 16000 } });
+        nodo.port.onmessage = function (ev) { liveEnviar(L, new Int16Array(ev.data.pcm), ev.data.rms); };
+        L.src = a.createMediaStreamSource(L.st); L.pr = nodo; L.mute = a.createGain(); L.mute.gain.value = 0; M.live.mic = "worklet";
+        L.src.connect(anM); L.src.connect(nodo); nodo.connect(L.mute); L.mute.connect(a.destination);
+      }).catch(function (er) { L.wk = false; dlog("Live: worklet no disponible (" + (er && er.message) + "), uso el método clásico"); if (live === L) liveMicSP(L); });
+      return;
+    }
+    liveMicSP(L);
+  }
+  function liveMicSP(L) {
+    if (L.pr) return; var a = ac, ratio = a.sampleRate / 16000; M.live.mic = "script";
     L.src = a.createMediaStreamSource(L.st); L.pr = a.createScriptProcessor(2048, 1, 1); L.mute = a.createGain(); L.mute.gain.value = 0;
+    var hp = 0, pv = 0;
     L.pr.onaudioprocess = function (e) {
       if (live !== L || !L.ok || !L.ws || L.ws.readyState !== 1) return;
-      var inp = e.inputBuffer.getChannelData(0), n = Math.floor(inp.length / ratio), pcm = new Int16Array(n), gate = !liveInt && (hablando || performance.now() < L.gateHasta), i, j, s, rms = 0;
-      if (!gate) for (i = 0; i < n; i++) { var a0 = Math.floor(i * ratio), b0 = Math.min(inp.length, Math.floor((i + 1) * ratio)); s = 0; for (j = a0; j < b0; j++) s += inp[j]; s /= Math.max(1, b0 - a0); rms += s * s; pcm[i] = lim(s, -1, 1) * 32767; }
-      if (!gate) { rms = Math.sqrt(rms / n); if (rms > .02) pulso = Math.max(pulso, Math.min(1.1, rms * 7)); }
-      try { L.ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64Int16(pcm), mimeType: "audio/pcm;rate=16000" } } })); } catch (er) {}
+      var inp = e.inputBuffer.getChannelData(0), n = Math.floor(inp.length / ratio), pcm = new Int16Array(n), i, j, s, y, rms = 0;
+      for (i = 0; i < n; i++) { var a0 = Math.floor(i * ratio), b0 = Math.min(inp.length, Math.floor((i + 1) * ratio)); s = 0; for (j = a0; j < b0; j++) s += inp[j]; s /= Math.max(1, b0 - a0); y = s - pv + .96 * hp; pv = s; hp = y; y = lim(y, -1, 1); rms += y * y; pcm[i] = y * 32767; }
+      liveEnviar(L, pcm, Math.sqrt(rms / Math.max(1, n)));
     };
     L.src.connect(anM); L.src.connect(L.pr); L.pr.connect(L.mute); L.mute.connect(a.destination);
   }
@@ -1635,7 +2310,7 @@
   function liveStop(texto, err) {
     var L = live; if (!L) return; live = null; clearTimeout(L.tmo); L.cerrado = true; M.live.estado = "apagado";
     try { L.ws.onclose = null; L.ws.onmessage = null; L.ws.close(); } catch (er) {}
-    liveCortar(L); try { L.pr.onaudioprocess = null; L.pr.disconnect(); L.src.disconnect(); L.mute.disconnect(); } catch (er2) {}
+    liveCortar(L); try { if (L.pr) { L.pr.onaudioprocess = null; if (L.pr.port) L.pr.port.onmessage = null; L.pr.disconnect(); } } catch (er2) {} try { if (L.src) L.src.disconnect(); if (L.mute) L.mute.disconnect(); } catch (er3) {}
     if (L.st) L.st.getTracks().forEach(function (x) { x.stop(); });
     hablando = false; marcarLive(); fijar(err ? "error" : "reposo"); if (texto) msg(err ? "e" : "n", texto);
     if (err) tm.push(setTimeout(function () { if (!live) fijar("reposo"); }, 4000));
@@ -1772,6 +2447,22 @@
       var tk = ls("nexo_pc_token") || "nexo-pc-2026";
       return fetch(PC_URL + "/portapapeles?token=" + encodeURIComponent(tk), { method: "POST", headers: { "x-token": tk, "Content-Type": "application/json" }, body: JSON.stringify({ texto: texto }) }).then(function (r) { return r.json(); });
     },
+    pantalla: function (pregunta) {
+      var tk = ls("nexo_pc_token") || "nexo-pc-2026";
+      return fetch(PC_URL + "/pantalla?token=" + encodeURIComponent(tk), { headers: { "x-token": tk } }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || !j.ok) return { ok: false, error: (j && j.error) || MSG_PC };
+        if (j.bloqueada) return { ok: true, hecho: "La ventana activa (" + (j.ventana && j.ventana.proceso || "?") + ") está en la lista privada, no la miro." };
+        if (!clave) return { ok: false, error: "Necesito la clave de Gemini para analizar la imagen." };
+        mostrarJpegChat(j.jpeg);
+        var q = String(pregunta || "").trim() || "Describe brevemente qué se ve en la pantalla y qué está haciendo el usuario.";
+        var ctl = new AbortController(), tm = setTimeout(function () { ctl.abort(); }, 25000);
+        var cuerpo = { contents: [{ role: "user", parts: [{ inlineData: { mimeType: "image/jpeg", data: j.jpeg } }, { text: "Captura de la pantalla del PC del usuario. Ventana activa: " + (j.ventana.proceso || "?") + " — «" + (j.ventana.titulo || "") + "». " + q + " Responde en español, breve y concreto. Si ves contraseñas, números de tarjeta o datos privados, no los repitas." }] }] };
+        return fetch(API + MODELOS[0] + ":generateContent", { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": clave }, body: JSON.stringify(cuerpo) }).then(function (r) { clearTimeout(tm); if (!r.ok) throw new Error("Gemini HTTP " + r.status); return r.json(); }).then(function (g) {
+          var t = ""; try { t = g.candidates[0].content.parts.map(function (p) { return p.text || ""; }).join(" ").trim(); } catch (er) {}
+          return t ? { ok: true, hecho: t, ventana: (j.ventana.proceso || "") + " — " + (j.ventana.titulo || "") } : { ok: false, error: "Gemini no devolvió descripción." };
+        });
+      });
+    },
     screenshot: function () {
       var tk = ls("nexo_pc_token") || "nexo-pc-2026";
       return fetch(PC_URL + "/screenshot?token=" + encodeURIComponent(tk), { headers: { "x-token": tk } }).then(function (r) {
@@ -1888,10 +2579,11 @@
     if (n === "pc_estado") return pc.estado().then(function (j) { return j && j.ok ? { ok: true, hecho: "PC disponible. Carpetas: " + (j.bases || []).join(", ") } : { ok: false, error: (j && j.error) || MSG_PC }; });
     if (n === "pc_listar") return pc.listar(a.carpeta).then(function (j) {
       if (!j || !j.ok) return { ok: false, error: (j && j.error) || MSG_PC };
+      explorador(a.carpeta || "", j.items || []);
       var lines = (j.items || []).map(function (it) { return (it.tipo === "carpeta" ? "📁 " : "📄 ") + it.nombre + (it.tamano != null ? " (" + it.tamano + " B)" : ""); });
       return { ok: true, hecho: "Contenido de " + (a.carpeta || "") + ":\n" + lines.join("\n"), items: j.items };
     });
-    if (n === "pc_archivo") return pc.descargar(a.ruta).then(function (j) { return j; }).catch(function (e) { return { ok: false, error: "Error descargando: " + (e && e.message) }; });
+    if (n === "pc_archivo") return traerArchivo({ ruta: a.ruta, accion: "traer" });
     if (n === "pc_volumen") {
       var qs = "";
       if (a.nivel !== undefined && a.nivel !== null) qs += "nivel=" + encodeURIComponent(a.nivel) + "&";
@@ -1928,7 +2620,15 @@
     }
     if (n === "pc_portapapeles_leer") return pc.clipboardLeer().then(function (j) { return j && j.ok ? { ok: true, hecho: "Portapapeles: " + (j.texto || "(vacio)") } : { ok: false, error: (j && j.error) || MSG_PC }; }).catch(function (e) { return { ok: false, error: MSG_PC }; });
     if (n === "pc_portapapeles_escribir") return pc.clipboardEscribir(a.texto).then(function (j) { return j && j.ok ? { ok: true, hecho: "Portapapeles actualizado." } : { ok: false, error: (j && j.error) || MSG_PC }; }).catch(function (e) { return { ok: false, error: MSG_PC }; });
-    if (n === "pc_screenshot") return pc.screenshot().catch(function (e) { return { ok: false, error: "Error: " + (e && e.message) }; });
+    if (n === "pc_ver_pantalla") return pc.pantalla(a.pregunta).catch(function (e) { return { ok: false, error: /Gemini/.test(e && e.message || "") ? e.message : MSG_PC }; });
+    if (n === "pc_screenshot") return pcScreenshotUI().catch(function (e) { return { ok: false, error: "No pude traer la captura: " + (e && e.message) }; });
+    if (n === "pc_traer") return traerArchivo(a);
+    if (n === "pc_reproducir") return pcReproducir(a);
+    if (n === "pc_ordenar") return pcOrdenar(a);
+    if (n === "mostrar_video") return mostrarVideo(a);
+    if (n === "opencode_implementar") return opencodeImplementar(a);
+    if (n === "opencode_revertir") return opencodeRevertir(a);
+    if (n === "nexo_proyecto") return nexoProyecto(a);
     if (n === "pc_media") return pc.mediaPC(a.accion).then(function (j) { return j && j.ok ? { ok: true, hecho: "Media: " + a.accion } : { ok: false, error: (j && j.error) || MSG_PC }; }).catch(function (e) { return { ok: false, error: MSG_PC }; });
     if (n === "pc_tts") return pc.ttsPC(a.texto).then(function (j) { return j && j.ok ? { ok: true, hecho: (j.hecho || "La PC hablo.") } : { ok: false, error: (j && j.error) || MSG_PC }; }).catch(function (e) { return { ok: false, error: MSG_PC }; });
     if (n === "pc_procesos") return pc.procesos().then(function (j) {
